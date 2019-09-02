@@ -1,0 +1,749 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseElevatorManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache"/>
+  
+<!--   工号表格查询		特别注意：如修改显示字段或查询条件，下面导出也必须修改 -->
+  <sql id="queryList">
+	SELECT
+		t.*,
+		a2.*,
+		t.step_width AS step_width_name,
+		t.drive_way drive_way_name,
+		t.region_state_name ele_state_name,
+		t.region_province_name ele_province_name,
+		t.region_city_name ele_city_name,
+		t.region_district_name ele_district_name,
+		t5.dict_name special_label_name,
+		t6.dict_name proj_type_name,
+		bpj.proj_name,
+		bd.dict_name AS contract_category_name,
+		t8.dict_name AS contract_nature_name,
+		t9.dict_name AS business_category_name 
+	FROM
+		(
+	SELECT
+		be.*,
+	CASE
+		be.ele_category 
+		WHEN '1' THEN
+		'直梯' 
+		WHEN '2' THEN
+		'扶梯' 
+		END AS ele_category_name,
+	CASE
+		be.ele_type 
+		WHEN '1' THEN
+		'曳引梯' 
+		WHEN '2' THEN
+		'液压梯' 
+		WHEN '3' THEN
+		'杂物梯' 
+		WHEN '4' THEN
+		'室外型扶梯' 
+		WHEN '5' THEN
+		'室内型扶梯' 
+		WHEN '6' THEN
+		'餐梯' 
+		WHEN '7' THEN
+		'室外型人行道' 
+		WHEN '8' THEN
+		'室内型人行道' 
+		END AS ele_type_name,
+	CASE
+		be.enable_flag 
+		WHEN '1' THEN
+		'活动' 
+		WHEN '0' THEN
+		'禁用' 
+		END AS enable_flag_name,
+	CASE
+		be.is_key_project 
+		WHEN '1' THEN
+		'普通' 
+		WHEN '2' THEN
+		'KP' 
+		END AS is_key_project_name,
+	CASE
+		be.is_install 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_install_name,
+	CASE
+		be.is_install_monitor 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_install_monitor_name,
+	CASE
+		be.is_domestic 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_domestic_name,
+	CASE
+		be.is_import 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_import_name,
+	CASE
+		be.is_recombination 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_recombination_name,
+	CASE
+		be.no_machine_room 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS no_machine_room_name,
+	CASE
+		be.through_door 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS through_door_name,
+	CASE
+		be.relay 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS relay_name,
+	CASE
+		mc.contract_status 
+		WHEN '0' THEN
+		'已废弃' 
+		WHEN '1' THEN
+		'已退保' 
+		WHEN '4' THEN
+		'已延长' 
+		WHEN '5' THEN
+		'已审核' 
+		END AS contract_status_name,
+	CASE
+		mc.is_multi_customer 
+		WHEN '1' THEN
+		'是' 
+		WHEN '0' THEN
+		'否' 
+		END AS is_part_b_name,
+	CASE 
+		be.high_end_customer
+		WHEN '1' THEN
+		'否'
+		WHEN '2' THEN
+		'HVC'
+		END AS high_end_customer_name,
+		mcd.comp_id,
+		mcd.stat_id,
+		mcd.area_id,
+		mcd.group_id,
+		mcd.mt_begin_date,
+		mcd.mt_end_date,
+		mc.contract_category,
+		mc.arrival_required,
+		mc.contract_status,
+		mc.business_category,
+		mcd.contract_nature,
+		mc.is_multi_customer,
+		bc.comp_name,
+		bs.stat_name,
+		ba.area_name,
+		bg.group_name
+	FROM
+		base_elevator be WITH(NOLOCK)
+		JOIN mt_contract_dtl mcd WITH(NOLOCK) ON mcd.asset_id = be.id AND mcd.contract_code = be.contract_code
+		LEFT JOIN mt_contract mc WITH(NOLOCK) ON mc.contract_code = be.contract_code
+		LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = mcd.comp_id
+		LEFT JOIN base_station bs WITH(NOLOCK) ON bs.id = mcd.stat_id
+		LEFT JOIN base_area ba WITH(NOLOCK) ON ba.id = mcd.area_id
+		LEFT JOIN base_group bg WITH(NOLOCK) ON bg.id = mcd.group_id 
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+		  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+		  		and be.asset_num like #{like_asset_num}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+		  		and mcd.comp_id = #{comp_id}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+		  		and mcd.stat_id = #{stat_id}
+		  	</if>
+		  	<if test="areaIdList != null and areaIdList.size() > 0 ">
+				and mcd.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+			</if>
+			<if test="statIdList != null and statIdList.size() > 0 ">
+				and mcd.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+			</if>
+			<if test="compIdList != null and compIdList.size() > 0 ">
+				and mcd.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+		  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+		  		and bc.comp_name like #{like_comp_name}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+		  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+		  		and bs.stat_name like #{like_stat_name}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category_name )">
+		  		and be.ele_category = #{ele_category_name}
+		  	</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_no )">
+		  		<bind name="like_ele_no" value="'%' + ele_no + '%'" />
+		  		and be.ele_no like #{like_ele_no}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+		  		and be.enable_flag = #{enable_flag}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( contract_code )">
+		  		<bind name="like_contract_code" value="'%' + contract_code + '%'" />
+		  		and be.contract_code like #{like_contract_code}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( service_num )">
+		  		<bind name="like_service_num" value="'%' + service_num + '%'" />
+		  		and be.service_num like #{like_service_num}
+		  	</if>
+		</where>
+		) t
+	LEFT JOIN base_project bpj WITH(NOLOCK) ON bpj.id = t.proj_id
+	LEFT JOIN (
+		SELECT
+			bp.id AS bp_id,
+			bp.property_name,
+			( SELECT TOP 1 bpp_temp.person_name FROM base_property_person bpp_temp WITH(NOLOCK) WHERE bpp_temp.property_id = bp.id ) AS contact_person_name,
+			( SELECT TOP 1 bpp_temp.person_tel1 FROM base_property_person bpp_temp WITH(NOLOCK) WHERE bpp_temp.property_id = bp.id ) AS contact_person_tel,
+			bp.key_property_code,
+			bkp.key_property_name 
+		FROM
+			base_property bp WITH(NOLOCK)
+		LEFT JOIN base_key_property bkp WITH(NOLOCK) ON bkp.key_property_code = bp.key_property_code 
+	) a2 ON a2.bp_id = t.use_customer
+	LEFT JOIN base_dictionary t5 WITH(NOLOCK) ON t5.dict_code = t.special_label 
+	AND t5.dict_type = 'special_label'
+	LEFT JOIN base_dictionary t6 WITH(NOLOCK) ON t6.dict_code = t.proj_type 
+	AND t6.dict_type = 'proj_type'
+	LEFT JOIN base_dictionary bd WITH(NOLOCK) ON bd.dict_type = 'contract_category' 
+	AND bd.dict_code = t.contract_category
+	LEFT JOIN base_dictionary t8 WITH(NOLOCK) ON t8.dict_code = t.contract_nature 
+	AND t8.dict_type= 'contract_nature'
+	LEFT JOIN base_dictionary t9 WITH(NOLOCK) ON t9.dict_code = t.business_category 
+	AND t9.dict_type= 'business_category' 
+	<where>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( project_name )">
+	  		<bind name="like_project_name" value="'%' + project_name + '%'" />
+	  		and bpj.proj_name like #{like_project_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(key_property_name)">
+	  	 	<bind name="like_key_property_name" value="'%' + key_property_name + '%'" />
+	       and a2.key_property_name like #{like_key_property_name,jdbcType=NVARCHAR}
+	     </if>
+	     <if test="@org.apache.commons.lang3.StringUtils@isNotBlank( key_words )">
+	  		<bind name="like_key_words" value="'%' + key_words + '%'" />
+	  		and ((t.asset_num_address like #{like_key_words}) or (bpj.proj_name like #{like_key_words}) or (t.mansion_name like #{like_key_words}) or (a2.property_name like #{like_key_words}))
+	  	</if>
+  	</where>
+  </sql>
+  
+  <select id="elevList" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean" resultType="java.util.HashMap" >
+  	select _temp.* from (
+    	<include refid="queryList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  	order by _temp.comp_id, _temp.stat_id, _temp.id asc
+  	<if test="isPageQeury == true">
+  		offset (#{page}-1)*#{rows} rows fetch next #{rows} rows only
+	</if>
+  </select>
+  
+   <select id="elevListCount" resultType="java.lang.Integer" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean">
+  	select count(1) from (
+		<include refid="queryList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+  
+  <!--   工号表格导出		特别注意：如修改显示字段或查询条件，上面工号分页查询也必须修改 -->
+  <sql id="queryExportList">
+  	SELECT
+   		t.*,
+		t5.dict_name as special_label_name,
+		bpj.proj_name,
+		t6.dict_name as proj_type_name,
+		a2.property_name,
+		a2.key_property_name,
+		a2.key_property_code
+	FROM
+		(
+	SELECT
+		mcd.comp_id,
+		mcd.stat_id,
+		be.id,
+		be.asset_num,
+   		be.ele_product,
+   		be.model_desc,
+   		be.ele_model,
+		CASE be.ele_category WHEN '1' THEN '直梯' WHEN '2' THEN '扶梯' END AS ele_category_name,
+		CASE be.ele_type WHEN '1' THEN '曳引梯' WHEN '2' THEN '液压梯' WHEN '3' THEN '杂物梯' WHEN '4' THEN '室外型扶梯' 
+			WHEN '5' THEN '室内型扶梯' WHEN '6' THEN '餐梯' WHEN '7' THEN '室外型人行道' WHEN '8' THEN '室内型人行道' END AS ele_type_name,
+		be.ele_brand,
+		be.ele_status,
+		be.mansion_name,
+		be.asset_num_address,
+		be.registered_code,
+		be.equipment_code,
+		be.use_no,
+		be.import_asset_num,
+		be.longitude,
+		be.latitude,
+		be.coordinate_collector,
+		be.coordinate_collect_datetime,
+		be.ele_angle,
+		be.drive_way as drive_way_name,
+		be.host_model,
+		be.host_power,
+		be.ele_speed,
+		be.ele_carry,
+		be.ele_high,
+		be.step_width as step_width_name,
+		be.ele_floor,
+		be.ele_stop,
+		be.ele_door,
+		be.conversion_layer,
+		be.double_door_layer,
+		be.ele_no,
+		be.projection_length,
+		be.extent_length,
+		be.cylinders_num,
+		be.jack_up_way,
+		be.total_reading,
+		be.run_reading,
+		be.contract_code,
+		be.special_function,
+		be.cust_special,
+		be.install_contract_code,
+		be.trans_mt_date,
+		be.trans_cust_date,
+		be.certificate_date,
+		be.completion_date,
+		be.engineering_supervision,
+		be.engineering_supervision_tel,
+		be.install_do_date,
+		be.install_status,
+		be.service_num,
+		be.warranty_begin_date,
+		be.warranty_end_date,
+		be.annual_check_date,
+		be.last_worker_name,
+		be.demolition_date,
+		be.asset_num_before,
+		be.parts_asset_num,
+		be.file_num,
+		be.ele_remark,
+		be.updated_datetime,
+		be.proj_id,
+		be.use_customer,
+		be.special_label,
+		be.proj_type,
+		be.region_state_name as ele_state_name,
+		be.region_province_name as ele_province_name,
+		be.region_city_name as ele_city_name,
+		be.region_district_name as ele_district_name,
+		CASE be.enable_flag WHEN '1' THEN '活动' WHEN '0' THEN '禁用' END AS enable_flag_name,
+		CASE be.is_key_project WHEN '1' THEN '普通' WHEN '2' THEN 'KP' END AS is_key_project_name,
+		CASE be.is_install WHEN '1' THEN '是' WHEN '0' THEN '否' END AS is_install_name,
+		CASE be.is_install_monitor WHEN '1' THEN '是' WHEN '0' THEN '否' END AS is_install_monitor_name,
+		CASE be.is_domestic WHEN '1' THEN '是' WHEN '0' THEN '否' END AS is_domestic_name,
+		CASE be.is_import WHEN '1' THEN '是' WHEN '0' THEN '否' END AS is_import_name,
+		CASE be.is_recombination WHEN '1' THEN '是' WHEN '0' THEN '否' END AS is_recombination_name,
+		CASE be.no_machine_room WHEN '1' THEN '是' WHEN '0' THEN '否' END AS no_machine_room_name,
+		CASE be.through_door WHEN '1' THEN '是' WHEN '0' THEN '否' END AS through_door_name,
+		CASE be.relay WHEN '1' THEN '是' WHEN '0' THEN '否' END AS relay_name,
+		CASE be.high_end_customer WHEN '1' THEN '否'	WHEN '2' THEN 'HVC'	END AS high_end_customer_name,
+		mcd.mt_begin_date,
+		mcd.mt_end_date,
+		bc.comp_name,
+		bs.stat_name,
+		ba.area_name,
+		bg.group_name 
+	FROM
+		base_elevator be WITH(NOLOCK)
+		JOIN mt_contract_dtl mcd WITH(NOLOCK) ON mcd.asset_id = be.id AND mcd.contract_code = be.contract_code 
+		LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = mcd.comp_id
+		LEFT JOIN base_station bs WITH(NOLOCK) ON bs.id = mcd.stat_id
+		LEFT JOIN base_area ba WITH(NOLOCK) ON ba.id = mcd.area_id
+		LEFT JOIN base_group bg WITH(NOLOCK) ON bg.id = mcd.group_id 
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+	  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+	  		and be.asset_num like #{like_asset_num}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and mcd.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and mcd.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0 ">
+			and mcd.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0 ">
+			and mcd.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0 ">
+			and mcd.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category_name )">
+	  		and be.ele_category = #{ele_category_name}
+	  	</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_no )">
+	  		<bind name="like_ele_no" value="'%' + ele_no + '%'" />
+	  		and be.ele_no like #{like_ele_no}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and be.enable_flag = #{enable_flag}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( contract_code )">
+	  		<bind name="like_contract_code" value="'%' + contract_code + '%'" />
+	  		and be.contract_code like #{like_contract_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( service_num )">
+	  		<bind name="like_service_num" value="'%' + service_num + '%'" />
+	  		and be.service_num like #{like_service_num}
+	  	</if>
+	</where>
+	) t
+	LEFT JOIN base_project bpj WITH(NOLOCK) ON bpj.id = t.proj_id
+	LEFT JOIN (
+		SELECT
+			bp.id AS bp_id,
+			bp.property_name,
+			bp.key_property_code,
+			bkp.key_property_name 
+		FROM
+			base_property bp WITH(NOLOCK)
+		LEFT JOIN base_key_property bkp WITH(NOLOCK) ON bkp.key_property_code = bp.key_property_code 
+	) a2 ON a2.bp_id = t.use_customer
+	LEFT JOIN base_dictionary t5 WITH(NOLOCK) ON t5.dict_code = t.special_label AND t5.dict_type = 'special_label'
+	LEFT JOIN base_dictionary t6 WITH(NOLOCK) ON t6.dict_code = t.proj_type AND t6.dict_type = 'proj_type'
+	<where>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( project_name )">
+	  		<bind name="like_project_name" value="'%' + project_name + '%'" />
+	  		and bpj.proj_name like #{like_project_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(key_property_name)">
+	  	 	<bind name="like_key_property_name" value="'%' + key_property_name + '%'" />
+	       and a2.key_property_name like #{like_key_property_name,jdbcType=NVARCHAR}
+	     </if>
+  	</where>
+  </sql>
+  
+  
+  <select id="elevExportListCount" resultType="java.lang.Long" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean">
+  	select count(1) from (
+		<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+  
+  
+    <select id="elevExportList" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean" resultType="java.util.HashMap" 
+    	useCache="false" timeout="5000">
+  	select _temp.* from (
+    	<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  	order by _temp.comp_id, _temp.stat_id, _temp.id asc
+  	<if test="isPageQeury == true">
+  		offset (#{page}-1)*#{rows} rows fetch next #{rows} rows only
+	</if>
+  </select>
+  
+	<select id="elevExistEffectContract" resultType="java.lang.Integer">
+		select 
+			count(1) 
+		from 
+			base_elevator t WITH(NOLOCK)
+		join mt_contract_dtl s WITH(NOLOCK) on s.contract_code = t.contract_code and s.asset_id = t.id
+		where
+			t.id = #{asset_id} and t.enable_flag='1' and s.is_warranty_period='1'
+	</select>
+	
+  <select id="fetchElevatorBrandData" resultType="java.util.HashMap">
+  	<![CDATA[
+  	select t.ele_brand from (select ele_brand from base_elevator WITH(NOLOCK) group by ele_brand) t where t.ele_brand is not null and t.ele_brand <> '' order by t.ele_brand
+  	]]>
+  </select>
+  
+  <select id="elevChangeStatusListPage" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean" resultType="java.util.HashMap">
+  	<![CDATA[
+  	select
+  		*
+  	from
+  		file_asset_change
+  	where
+  		enable_flag = '1'
+  		and asset_change_status != '转司'
+  		and asset_id = #{asset_id}
+  	order by
+  		id desc
+  	]]>
+  </select>
+  
+<select id="casualCheckElevList" parameterType="com.zxtech.ess.module.base.bean.BaseCasualElevatorSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+		SELECT
+		    bg.group_manager,
+		    bemp.emp_name AS group_manager_name,
+			bpj.proj_name,
+			t.proj_id,
+			t.mansion_name,
+			bp.property_name,
+			bp.property_address,
+			bp.id as property_id,	
+			bd1.dict_name as business_category_name,
+			t.ele_model,
+			t.ele_category,
+			sd1.dict_name as ele_category_name,
+			t.ele_carry,
+			t.ele_speed,
+			t.ele_floor,
+			t.ele_stop,
+			t.contract_code,
+			bkp.key_property_name,
+			bkp.key_property_code,
+			sd2.dict_name as is_key_project_name,
+			t.certificate_date,
+			t.ele_brand,
+			mcd.comp_id,
+			mcd.stat_id,
+			mcd.area_id,
+			mcd.group_id,
+			mcd.asset_id,
+			bc.comp_name,
+			bcy.comp_name as p_area_name,
+			bc.p_area_id,
+			bs.stat_name,
+			ba.area_name,
+			bg.group_name,
+			mc.business_category,
+			t.is_key_project,
+			t.asset_num,
+			t.id,
+			<![CDATA[
+			(case when
+				datediff(year,CONVERT(datetime,t.certificate_date,101),GETDATE()) < 1
+			and
+				datediff(dd,CONVERT(datetime,t.certificate_date,101),GETDATE()) > 1
+			then
+			1
+			when
+				datediff(year,CONVERT(datetime,t.certificate_date,101),GETDATE()) >= 1
+			then 
+				CEILING(datediff(mm,CONVERT(datetime,t.certificate_date,101),GETDATE())/cast(12 as float))
+			end) use_limit,
+			]]>
+			bd2.dict_name AS proj_type_name,
+			t.proj_type
+		FROM
+			base_elevator t WITH(NOLOCK)
+			JOIN mt_contract_dtl mcd WITH(NOLOCK) ON mcd.asset_id = t.id  AND mcd.contract_code = t.contract_code
+			LEFT JOIN mt_contract mc WITH(NOLOCK) ON mc.contract_code = mcd.contract_code
+		    LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = mcd.comp_id
+		    LEFT JOIN base_company bcy WITH(NOLOCK) ON bcy.id = bc.p_area_id and bcy.comp_type ='2'
+			LEFT JOIN base_station bs WITH(NOLOCK) ON bs.id = mcd.stat_id
+			LEFT JOIN base_area ba WITH(NOLOCK) ON ba.id = mcd.area_id
+			LEFT JOIN base_group bg WITH(NOLOCK) ON bg.id = mcd.group_id
+			LEFT JOIN base_property bp WITH(NOLOCK) on bp.id = t.use_customer
+		    LEFT JOIN base_project bpj WITH(NOLOCK) ON bpj.id = t.proj_id
+			LEFT JOIN base_key_property bkp WITH(NOLOCK) on bkp.key_property_code = bp.key_property_code
+			LEFT JOIN base_dictionary bd1 WITH(NOLOCK) ON bd1.dict_code = mc.business_category AND bd1.dict_type='business_category'
+		    LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'ele_category' AND sd1.dict_value = t.ele_category
+		    LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'is_key_project' AND sd2.dict_value = t.is_key_project
+		    LEFT JOIN base_employee bemp WITH(NOLOCK) ON bemp.emp_code = bg.group_manager
+		    LEFT JOIN base_dictionary bd2 WITH(NOLOCK) ON bd2.dict_type = 'proj_type' AND bd2.dict_code = t.proj_type
+	<where>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+	  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+	  		and t.asset_num like #{like_asset_num}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and mcd.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and mcd.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and mcd.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and mcd.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and mcd.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category_name )">
+	  		and t.ele_category = #{ele_category_name}
+	  	</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_no )">
+	  		<bind name="like_ele_no" value="'%' + ele_no + '%'" />
+	  		and t.ele_no like #{like_ele_no}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and t.enable_flag = #{enable_flag}
+	  	</if>
+	  	<if test='casual_check_category == "全面检查"   or casual_check_category == "重点检查"'>
+	  		and t.asset_num NOT IN ('直梯无合同','扶梯无合同')
+	  	</if>
+  	</where>
+  	) _temp
+  	order by _temp.comp_id, _temp.stat_id, _temp.asset_id asc
+  </select>
+  <select id="getAnnualCheckDateBeforeCurrent"  resultType="java.util.HashMap">
+  		select 
+  			be.id,
+  			be.asset_num, 
+  			be.annual_check_date,
+  			be.certificate_date
+  			
+  		from  
+  			base_elevator be WITH(NOLOCK)
+  		where  
+  			<![CDATA[
+  				(be.annual_check_date <> '' 
+				and be.annual_check_date is not null)
+				and datediff(MM,GETDATE(),(be.annual_check_date+'-01')) < 0
+	  			
+  			]]>
+  </select>
+  <select id="getAnnualCheckDateIsNull"  resultType="java.util.HashMap">
+  		select 
+  			be.id,
+  			be.asset_num, 
+  			be.annual_check_date,
+  			be.certificate_date
+  			
+  		from  
+  			base_elevator be WITH(NOLOCK)
+  		where  
+  			<![CDATA[
+			(be.annual_check_date is  null or be.annual_check_date = '')
+  			and be.certificate_date is not null
+			and be.certificate_date <> ''
+			]]>
+  </select>
+  <select id="gyrusCheckElevatorList" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+		SELECT
+			t.id,
+			t.asset_num,
+			t.ele_category,
+			sd1.dict_name AS ele_category_name,
+			t.ele_model,
+			t.ele_floor,
+			t.ele_stop,
+			t.contract_code			
+		FROM
+			base_elevator t WITH(NOLOCK)
+			LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'ele_category' AND sd1.dict_value = t.ele_category
+			LEFT JOIN mt_contract_dtl ml WITH(NOLOCK) ON ml.asset_id = t.id AND ml.contract_code = t.contract_code
+		WHERE
+			t.enable_flag = '1' 
+			AND t.asset_num NOT IN (
+			'直梯无合同',
+			'扶梯无合同' 
+			) 
+			<![CDATA[
+			AND NOT EXISTS ( SELECT 1 FROM mt_contract_dtl mdl WITH(NOLOCK) WHERE mdl.asset_id = t.id AND mdl.contract_code = t.contract_code AND mdl.source_id != '-1' )
+			]]>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		AND t.asset_comp_id = #{comp_id}
+	  	</if>
+	  	<if test="compIdsList != null and compIdsList.size() > 0">
+	  		AND t.asset_comp_id in
+	  		<foreach item="compId" index="index" collection="compIdsList" open="(" separator="," close=")">
+	  			#{compId}
+	  		</foreach>
+	  	</if>	
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+	  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+	  		and t.asset_num like #{like_asset_num}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category_name )">
+	  		and t.ele_category = #{ele_category_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_model )">
+	  		<bind name="like_ele_model" value="'%' + ele_model + '%'" />
+	  		and t.ele_model like #{like_ele_model}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_floor )">
+	  		and t.ele_floor = #{ele_floor}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_stop )">
+	  		and t.ele_stop = #{ele_stop}
+	  	</if>	  		  		  	
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and t.enable_flag = #{enable_flag}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_ele_category_id )">
+	  		<![CDATA[
+	  			and t.id <> #{selected_ele_category_id, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0 ">
+			and ml.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>	  		  		  		  	
+		<if test="statIdList != null and statIdList.size() > 0">
+			and ml.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and ml.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>	  		  	
+  	) _temp
+  	order by _temp.asset_num desc
+  </select>
+</mapper>

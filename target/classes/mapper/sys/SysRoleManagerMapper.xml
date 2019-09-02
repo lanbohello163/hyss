@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.sys.mapper.SysRolePageMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <select id="getListWithPaging" parameterType="com.zxtech.ess.module.sys.bean.SysRoleSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+			id,
+			role_name,
+			role_desc,
+			enable_flag,
+			create_user,
+			create_timestamp,
+			last_update_user,
+			last_update_timestamp,
+			last_update_remark
+		from
+			sys_role WITH(NOLOCK)
+		where
+			enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( role_name )">
+	  		<bind name="like_role_name" value="'%' + role_name + '%'" />
+	  		and role_name like #{like_role_name}
+	  	</if>
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	  	order by id desc
+  </select>
+  
+  <select id="getSysRolelist" parameterType="com.zxtech.ess.module.sys.bean.SysRoleSearchBean" resultType="java.util.HashMap">
+	   select
+			sr.id,
+			sr.role_name,
+			sr.role_desc,
+			sr.enable_flag,
+			sr.create_user,
+			sr.create_timestamp,
+			sr.last_update_user,
+			sr.last_update_timestamp,
+			sr.last_update_remark
+		from
+			sys_role sr WITH(NOLOCK)
+		join sys_user_role_rel surr WITH(NOLOCK) on sr.id=surr.role_id
+		join sys_user su WITH(NOLOCK) on surr.user_id=su.id
+		where
+			sr.enable_flag = '1'
+		<if test="user_id != null">
+			and surr.user_id = #{user_id}
+		</if>
+	  	order by id desc
+  </select>
+</mapper>

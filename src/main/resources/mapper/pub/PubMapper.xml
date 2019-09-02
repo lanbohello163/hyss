@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.pub.mapper.PubMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <!-- author: zhaow -->
+  <select id="fetchPublicSysRole" resultMap="com.zxtech.ess.module.gen.mapper.SysRoleMapper.BaseResultMap">
+	select 
+		<include refid="com.zxtech.ess.module.gen.mapper.SysRoleMapper.Base_Column_List" />
+	from
+		sys_role WITH(NOLOCK)
+	where
+		enable_flag = '1'
+    order by
+		role_name
+  </select>
+  
+  <select id="getListByCompany" parameterType="com.zxtech.platform.vo.UserBean" resultType="java.util.HashMap">
+		WITH temp(id,p_comp_id,comp_name,comp_type) AS  
+		(
+			<if test="compIdList != null and compIdList.size() > 0">
+		  		SELECT id,p_comp_id,comp_name,comp_type from base_company WITH(NOLOCK) where id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach> and enable_flag='1'
+		  	</if>
+		  	<if test="compIdList == null or compIdList.size() == 0">
+		  		SELECT id,p_comp_id,comp_name,comp_type from base_company WITH(NOLOCK) where comp_type='1' and enable_flag='1'
+		  	</if>
+			UNION ALL
+			SELECT bc.id,bc.p_comp_id,bc.comp_name,bc.comp_type from base_company as bc WITH(NOLOCK) INNER JOIN temp on temp.id=bc.p_comp_id
+		)
+		SELECT id,comp_name, case when comp_type='1' then '总部' when comp_type='2' then '区域' when comp_type='3' then '分公司' end as 'comp_group' from temp WITH(NOLOCK)
+				
+  </select>
+  
+  <select id="getTreeListByCompany" parameterType="com.zxtech.platform.vo.UserBean" resultMap="com.zxtech.ess.module.gen.mapper.BaseCompanyMapper.BaseResultMap">
+		WITH temp(id,p_comp_id,comp_name,comp_type) AS  
+		(
+			<if test="compIdList != null and compIdList.size() > 0">
+		  		SELECT id,p_comp_id,comp_name,comp_type from base_company WITH(NOLOCK) where id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach> and enable_flag='1'
+		  	</if>
+		  	<if test="compIdList == null or compIdList.size() == 0">
+		  		SELECT id,p_comp_id,comp_name,comp_type from base_company WITH(NOLOCK) where comp_type='1' and enable_flag='1'
+		  	</if>
+			UNION ALL
+			SELECT bc.id,bc.p_comp_id,bc.comp_name,bc.comp_type from base_company as bc WITH(NOLOCK) INNER JOIN temp on temp.id=bc.p_comp_id and bc.enable_flag='1'
+		)
+		SELECT id,comp_name,p_comp_id,comp_type from temp WITH(NOLOCK)
+				
+  </select>
+  
+  <select id="getTreeListByStat" resultMap="com.zxtech.ess.module.gen.mapper.BaseCompanyMapper.BaseResultMap">
+		select
+			bs.id,
+		  	bs.stat_name as comp_name,
+		  	bs.comp_id as p_comp_id,
+		  	'4' as comp_type
+		from base_station bs WITH(NOLOCK)
+		where bs.enable_flag = '1'
+		and bs.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+  </select>
+  
+  <select id="getTreeListByArea" resultMap="com.zxtech.ess.module.gen.mapper.BaseCompanyMapper.BaseResultMap">
+		select
+			ba.id,
+		  	ba.area_name as comp_name,
+		  	ba.stat_id as p_comp_id,
+		  	'5' as comp_type
+		from base_area ba WITH(NOLOCK)
+		where ba.enable_flag = '1'
+		and ba.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+  </select>
+  
+  <select id="getSequenceOrder" useCache="false" resultType="java.lang.String">
+	select next value for sequence_order
+  </select>
+  
+  <select id="getCalServiceSequenceOrder" useCache="false" resultType="java.lang.String">
+	select next value for sequence_order_fw
+  </select>
+  
+  <select id="getCommonProjectList" parameterType="com.zxtech.ess.module.pub.bean.PubSearchBean" resultType="java.util.HashMap">
+		select
+			bp.id,
+		  	bp.proj_code,
+		  	bp.proj_name,
+		  	bp.comp_id,
+		  	bp.stat_id,
+		  	bp.proj_province,
+		  	bp.proj_city,
+		  	bp.proj_address,
+		  	bp.proj_remark,
+		  	bc.comp_name,
+		  	bs.stat_name,
+		  	bp.region_province_name as proj_province_name,
+		  	bp.region_city_name as proj_city_name
+		from base_project bp WITH(NOLOCK)
+		left join base_company bc WITH(NOLOCK) on bp.comp_id=bc.id
+		left join base_station bs WITH(NOLOCK) on bp.stat_id=bs.id
+		where 1 = 1
+		and bp.enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( proj_code )">
+	  		<bind name="like_proj_code" value="'%' + proj_code + '%'" />
+	  		and bp.proj_code like #{like_proj_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( proj_name )">
+	  		<bind name="like_proj_name" value="'%' + proj_name + '%'" />
+	  		and bp.proj_name like #{like_proj_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and bp.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and bp.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="compIdList != null and compIdList.size() > 0">
+			and bp.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bp.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+  </select>
+  
+  <select id="fetchQueryHelperComboboxList" resultType="java.util.HashMap">
+	select 
+		<include refid="com.zxtech.ess.module.gen.mapper.QueryDefinitionMapper.Base_Column_List" />
+	from
+		query_definition WITH(NOLOCK)
+	where
+		enable_flag = '1'
+		and query_url = #{query_url}
+		and (owner_code = #{empCode} or is_shared = '1')
+    order by
+		query_name
+  </select>
+  
+  <select id="getHotlineUserList" parameterType="com.zxtech.ess.module.gen.bean.BaseEmployee" resultType="java.util.HashMap">
+	select 
+		su.sso_code
+	from base_employee be WITH(NOLOCK)
+	join sys_user su WITH(NOLOCK) on su.emp_code=be.emp_code
+	where
+		be.enable_flag = '1'
+		and su.enable_flag = '1'
+	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_hotline )">
+  		and be.type_hotline = #{type_hotline}
+  	</if>
+  </select>
+  
+  <select id="fetchPublicMachineType" parameterType="com.zxtech.ess.module.gen.bean.BaseMachineType" resultMap="com.zxtech.ess.module.gen.mapper.BaseMachineTypeMapper.BaseResultMap">
+	select
+		<include refid="com.zxtech.ess.module.gen.mapper.BaseMachineTypeMapper.Base_Column_List" />
+	from base_machine_type WITH(NOLOCK)
+	where
+		enable_flag = '1'
+	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( machine_type )">
+  		and machine_type = #{machine_type}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( p_type_id )">
+  		and p_type_id = #{p_type_id}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category )">
+  		and ele_category = #{ele_category}
+  	</if>
+  </select>
+  
+  <select id="fetchSysDictionaryData" parameterType="com.zxtech.ess.module.gen.bean.SysDictionary"
+		resultMap="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.BaseResultMap">
+	select
+		<include refid="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.Base_Column_List" />
+	from sys_dictionary WITH(NOLOCK)
+	<where>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_type)">
+        and dict_type = #{dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_value)">
+        and dict_value = #{dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_name)">
+        and dict_name = #{dict_name,jdbcType=NVARCHAR}
+      </if>
+      <if test="dict_sort != null">
+        and dict_sort = #{dict_sort,jdbcType=INTEGER}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_type)">
+        and p_dict_type = #{p_dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_value)">
+        and p_dict_value = #{p_dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_remark)">
+        and dict_remark = #{dict_remark,jdbcType=NVARCHAR}
+      </if>
+    </where>
+    order by dict_sort asc
+  </select>
+  
+  <select id="fetchSysDictionaryData_maintenance" parameterType="com.zxtech.ess.module.gen.bean.SysDictionary"
+		resultMap="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.BaseResultMap">
+	select
+		<include refid="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.Base_Column_List" />
+	from sys_dictionary WITH(NOLOCK)
+	<where>
+		and dict_value in ('maintenance_factor', 'special_label', 'brakes_type','casual_check_activity','casual_check_category', 'item_position', 'mt_type')
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_type)">
+        and dict_type = #{dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_value)">
+        and dict_value = #{dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_name)">
+        and dict_name = #{dict_name,jdbcType=NVARCHAR}
+      </if>
+      <if test="dict_sort != null">
+        and dict_sort = #{dict_sort,jdbcType=INTEGER}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_type)">
+        and p_dict_type = #{p_dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_value)">
+        and p_dict_value = #{p_dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_remark)">
+        and dict_remark = #{dict_remark,jdbcType=NVARCHAR}
+      </if>
+    </where>
+    order by dict_sort asc
+  </select>
+  
+  <select id="fetchSysDictionaryData_contract" parameterType="com.zxtech.ess.module.gen.bean.SysDictionary"
+		resultMap="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.BaseResultMap">
+	select
+		<include refid="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.Base_Column_List" />
+	from sys_dictionary WITH(NOLOCK)
+	<where>
+		and dict_value in ('business_category', 'cease_reason_category', 'contract_category', 'contract_nature', 'extension_reason_category', 'group_type', 'practices', 'proj_type', 'stat_type', 'city', 'district', 'province', 'state')
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_type)">
+        and dict_type = #{dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_value)">
+        and dict_value = #{dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_name)">
+        and dict_name = #{dict_name,jdbcType=NVARCHAR}
+      </if>
+      <if test="dict_sort != null">
+        and dict_sort = #{dict_sort,jdbcType=INTEGER}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_type)">
+        and p_dict_type = #{p_dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_value)">
+        and p_dict_value = #{p_dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_remark)">
+        and dict_remark = #{dict_remark,jdbcType=NVARCHAR}
+      </if>
+    </where>
+    order by dict_sort asc
+  </select>
+  
+  <select id="fetchSysDictionaryData_hotline" parameterType="com.zxtech.ess.module.gen.bean.SysDictionary"
+		resultMap="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.BaseResultMap">
+	select
+		<include refid="com.zxtech.ess.module.gen.mapper.SysDictionaryMapper.Base_Column_List" />
+	from sys_dictionary WITH(NOLOCK)
+	<where>
+		and dict_value in ('knowledge_question_category', 'knowledge_question_child_category', 'knowledge_question_third_category','trap_situation')
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_type)">
+        and dict_type = #{dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_value)">
+        and dict_value = #{dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_name)">
+        and dict_name = #{dict_name,jdbcType=NVARCHAR}
+      </if>
+      <if test="dict_sort != null">
+        and dict_sort = #{dict_sort,jdbcType=INTEGER}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_type)">
+        and p_dict_type = #{p_dict_type,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(p_dict_value)">
+        and p_dict_value = #{p_dict_value,jdbcType=NVARCHAR}
+      </if>
+      <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dict_remark)">
+        and dict_remark = #{dict_remark,jdbcType=NVARCHAR}
+      </if>
+    </where>
+    order by dict_sort asc
+  </select>
+  
+  <select id="getCommonElevatorPagingList" parameterType="com.zxtech.ess.module.base.bean.BaseElevatorSearchBean" resultType="java.util.HashMap">
+  	select * from
+  	(
+  	(
+  	  select 
+		id,
+		asset_num,
+		asset_num_address,
+		proj_id,
+		ele_category,
+		mansion_name,
+		'' as proj_name,
+		use_customer,
+		ele_product,
+		'' as property_name,
+		'' as comp_name,
+		'' as stat_name,
+		'' as area_name,
+		'' as group_name,
+		'' as ele_category_name,
+		ele_no,
+	    ele_floor,
+	    ele_stop,
+	    ele_model,
+	    file_num,
+	    proj_type,
+	    ele_type,
+		'' as proj_type_name,
+		'' as key_property_code,
+		'' as key_property_name,
+		use_status,
+		'' as is_key_project_name,
+		trans_cust_date,
+		'' as comp_id,
+		'' as stat_id,
+		'' as area_id,
+		'' as group_id,
+		'' as mt_begin_date,
+		'' as mt_end_date,
+		'' as contract_category,
+		'' as arrival_required,
+		'' as contract_status,
+		'' as business_category,
+		'' as contract_nature,
+		'' as is_multi_customer,
+	    certificate_date,
+	    trans_mt_date,
+	    ele_brand,
+	    engineering_supervision,
+	    engineering_supervision_tel,
+		'' as is_install_name,
+		service_num,
+		'' as ele_type_name,
+		contract_code,
+		'' as contract_nature_name,
+		'' as contract_status_name,
+		'' as business_category_name,
+		'' as contract_category_name,
+		'' as is_part_b_name,
+		is_import,
+		host_model
+	from base_elevator WITH(NOLOCK)
+	where 
+	(asset_num = '直梯无合同' or asset_num = '扶梯无合同')
+	<if test=" comp_id != null">
+		<![CDATA[
+  		and 1 <> 1
+  		]]>
+  	</if>
+  	<if test=" stat_id != null">
+  		<![CDATA[
+  		and 1 <> 1
+  		]]>
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category )">
+  		and ele_category = #{ele_category}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_no )">
+  		<bind name="like_ele_no" value="'%' + ele_no + '%'" />
+  		and ele_no like #{like_ele_no}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+  		and asset_num like #{like_asset_num}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( key_words )">
+  		<![CDATA[
+  		and 1 <> 1
+  		]]>
+  	</if>
+  	)
+  	union all
+	(
+	select
+	be.id, 
+	be.asset_num,
+	be.asset_num_address,
+	be.proj_id,
+	be.ele_category,
+	be.mansion_name,
+	bp.proj_name,
+	be.use_customer,
+	be.ele_product,
+	bpr.property_name,
+	bc.comp_name,
+	bs.stat_name,
+	ba.area_name,
+	bg.group_name,
+	sd.dict_name as ele_category_name,
+	be.ele_no,
+	be.ele_floor,
+	be.ele_stop,
+	be.ele_model,
+	be.file_num,
+	be.proj_type,
+	be.ele_type,
+	t6.dict_name as proj_type_name,
+	bkp.key_property_code,
+	bkp.key_property_name,
+	be.use_status,
+	sd2.dict_name as is_key_project_name,
+	be.trans_cust_date,
+	mcd.comp_id,
+	mcd.stat_id,
+	mcd.area_id,
+	mcd.group_id,
+	mcd.mt_begin_date,
+	mcd.mt_end_date,
+	mc.contract_category,
+	mc.arrival_required,
+	mc.contract_status,
+	mc.business_category,
+	mcd.contract_nature,
+	mc.is_multi_customer,
+	be.certificate_date,
+	be.trans_mt_date,
+	be.ele_brand,
+	be.engineering_supervision,
+	be.engineering_supervision_tel,
+	sd6.dict_name as is_install_name,
+	be.service_num,
+	sd1.dict_name as ele_type_name,
+	be.contract_code,
+	t8.dict_name as contract_nature_name,
+	sd14.dict_name as contract_status_name,
+	bd1.dict_name as business_category_name,
+	bd.dict_name as contract_category_name,
+	sd15.dict_name as is_part_b_name,
+	be.is_import,
+	be.host_model
+	
+	from base_elevator be WITH(NOLOCK)
+	left join mt_contract_dtl mcd WITH(NOLOCK) on mcd.contract_code=be.contract_code and mcd.asset_id=be.id
+	left join mt_contract mc WITH(NOLOCK) on mc.contract_code = be.contract_code
+	left join base_project bp WITH(NOLOCK) on bp.id=be.proj_id
+	left join base_property bpr WITH(NOLOCK) on bpr.id=be.use_customer
+	left join base_company bc WITH(NOLOCK) on bc.id=mcd.comp_id
+	left join base_station bs WITH(NOLOCK) on bs.id=mcd.stat_id
+	left join base_area ba WITH(NOLOCK) on ba.id=mcd.area_id
+	left join base_group bg WITH(NOLOCK) on bg.id=mcd.group_id
+	left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type='ele_category' and sd.dict_value=be.ele_category
+	LEFT JOIN base_dictionary t6 WITH(NOLOCK) ON t6.dict_code = be.proj_type AND t6.dict_type = 'proj_type'
+	left join base_key_property bkp WITH(NOLOCK) on bkp.key_property_code = bpr.key_property_code
+	LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'is_key_project' AND sd2.dict_value = be.is_key_project
+	left join sys_dictionary sd6 WITH(NOLOCK) on sd6.dict_type='key_type' and sd6.dict_value = be.is_install
+	left join sys_dictionary sd1 WITH(NOLOCK) on sd1.dict_type='ele_type' and sd1.dict_value=be.ele_type
+	LEFT JOIN base_dictionary t8 WITH(NOLOCK) ON t8.dict_code = mcd.contract_nature AND t8.dict_type='contract_nature'
+	LEFT JOIN sys_dictionary sd14 WITH(NOLOCK) ON sd14.dict_value = mc.contract_status AND sd14.dict_type='contract_status'
+	LEFT JOIN base_dictionary bd1 WITH(NOLOCK) ON bd1.dict_code = mc.business_category AND bd1.dict_type='business_category'
+	LEFT JOIN base_dictionary bd WITH(NOLOCK) on bd.dict_type = 'contract_category' and bd.dict_code = mc.contract_category
+	LEFT JOIN sys_dictionary sd15 WITH(NOLOCK) ON sd15.dict_type='key_type' AND sd15.dict_value=mc.is_multi_customer
+	where be.enable_flag='1'
+	and be.asset_num != '直梯无合同'
+	and be.asset_num != '扶梯无合同'
+	<if test=" comp_id != null">
+  		and bc.id = #{comp_id}
+  	</if>
+  	<if test=" stat_id != null">
+  		and bs.id = #{stat_id}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category )">
+  		and be.ele_category = #{ele_category}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_no )">
+  		<bind name="like_ele_no" value="'%' + ele_no + '%'" />
+  		and be.ele_no like #{like_ele_no}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+  		and be.asset_num like #{like_asset_num}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( key_words )">
+  		<bind name="like_key_words" value="'%' + key_words + '%'" />
+  		and ((be.asset_num_address like #{like_key_words}) or (bp.proj_name like #{like_key_words}) or (be.mansion_name like #{like_key_words}) or (bpr.property_name like #{like_key_words}))
+  	</if>
+  	<if test="areaIdList != null and areaIdList.size() > 0">
+		and ((ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>))
+	</if>
+	<if test="statIdList != null and statIdList.size() > 0">
+		and ((bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>))
+	</if>
+	<if test="compIdList != null and compIdList.size() > 0">
+		and ((bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>))
+	</if>
+  	)
+  	) t
+  	order by t.asset_num desc
+  </select>
+</mapper>

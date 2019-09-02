@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseAreaManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <sql id="querySql">
+  	select _temp.* from (
+		SELECT t2.comp_name,t3.stat_name,t4.emp_name area_manager_name,t4.pda_position,t4.emp_position,t5.dict_name state,t6.dict_name pda_position_name,t1.*,
+		(SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM base_employee WITH(NOLOCK) WHERE area_id = t1.id and enable_flag='1') comp_disable_flag 
+		FROM base_area t1 WITH(NOLOCK)
+		LEFT JOIN base_company t2 WITH(NOLOCK) ON t1.comp_id = t2.id
+		LEFT JOIN base_station t3 WITH(NOLOCK) ON t1.stat_id = t3.id
+		LEFT JOIN base_employee t4 WITH(NOLOCK) ON t1.area_manager = t4.emp_code and t4.enable_flag='1'
+		LEFT JOIN sys_dictionary t5 WITH(NOLOCK) ON t1.enable_flag = t5.dict_value AND t5.dict_type = 'enable_flag'
+		LEFT JOIN sys_dictionary t6 WITH(NOLOCK) ON t6.dict_type='pda_position' AND t6.dict_value = t4.pda_position
+	  	WHERE 1 = 1
+	  	<if test="comp_id != null">
+	  		and t1.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and t2.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="stat_id != null">
+	  		and t1.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and t3.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( area_name )">
+	  		<bind name="like_area_name" value="'%' + area_name + '%'" />
+	  		and t1.area_name like #{like_area_name}
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and t1.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and t1.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and t1.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  	order by _temp.id desc
+  </sql>
+  
+  <select id="baseAreaPagingList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseAreaSearchBean">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="getReportList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseAreaSearchBean"
+  	useCache="false" timeout="5000">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="fetchWindowAreaList" parameterType="com.zxtech.ess.module.base.bean.BaseAreaSearchBean" resultType="java.util.HashMap">
+	select
+		ba.id,
+		ba.area_name,
+		bc.id as comp_id,
+		bc.comp_name,
+		bs.id as stat_id,
+		bs.stat_name
+	from base_area ba WITH(NOLOCK)
+	left join base_company bc WITH(NOLOCK) on ba.comp_id = bc.id
+	left join base_station bs WITH(NOLOCK) on ba.stat_id = bs.id
+	<where>
+		ba.enable_flag = '1'
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="comp_id != null">
+			and ba.comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and ba.stat_id = #{stat_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( area_name )">
+	  		<bind name="like_area_name" value="'%' + area_name + '%'" />
+	  		and ba.area_name like #{like_area_name}
+	  	</if>
+  	</where>
+  	order by
+  		bc.comp_name, bs.stat_name, ba.area_name
+  </select>
+</mapper>

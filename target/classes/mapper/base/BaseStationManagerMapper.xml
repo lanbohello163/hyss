@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseStationManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <sql id="querySql">
+	select _temp.* from (
+		SELECT t1.*,bd.dept_name, t2.comp_name, t3.dict_name state, t4.dict_name stat_type_name, t5.dict_name practices_name, 
+		t6.emp_name stat_manager_name ,t1.region_state_name country,t1.region_province_name province, t1.region_city_name city,
+		t1.region_district_name district,t10.emp_name visit_director_name,
+		(SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM base_employee WITH(NOLOCK) WHERE stat_id = t1.id and enable_flag='1') comp_disable_flag,
+		bss.erp_stat_name
+		FROM base_station t1 WITH(NOLOCK)
+		left join base_dept bd WITH(NOLOCK) on bd.id = t1.dept_id 
+		LEFT JOIN base_company t2 WITH(NOLOCK) on t1.comp_id = t2.id AND t2.enable_flag = '1'
+		LEFT JOIN sys_dictionary t3 WITH(NOLOCK) ON t3.dict_value = t1.enable_flag AND t3.dict_type = 'enable_flag'
+		LEFT JOIN base_dictionary t4 WITH(NOLOCK) ON t4.dict_code = t1.stat_type AND t4.dict_type = 'stat_type'
+		LEFT JOIN base_dictionary t5 WITH(NOLOCK) ON t5.dict_code = t1.practices AND t5.dict_type = 'practices'
+		LEFT JOIN base_employee t6 WITH(NOLOCK) ON t6.emp_code = t1.stat_manager
+		LEFT JOIN base_employee t10 WITH(NOLOCK) ON t10.emp_code = t1.visit_director
+	  	LEFT JOIN base_stat_sync bss WITH(NOLOCK) ON bss.erp_stat_id = t1.erp_stat_id
+	  	WHERE 1 = 1
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and t1.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and t2.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_type )">
+	  		and t1.stat_type = #{stat_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and t1.stat_name like #{like_stat_name}
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and t1.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and t1.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and exists(select 1 from base_area ba WITH(NOLOCK) where ba.comp_id = t1.comp_id and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>)
+		</if>
+	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  	order by _temp.id desc
+  </sql>
+  
+  <select id="baseStationPagingList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="getReportList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean"
+  	useCache="false" timeout="5000">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="statList" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean" resultType="java.util.HashMap">
+	select distinct
+		bs.stat_name,
+		bs.id
+	from base_company bc WITH(NOLOCK)
+	left join base_station bs WITH(NOLOCK) on bs.comp_id = bc.id and bs.enable_flag = '1' 
+	left join base_area ba WITH(NOLOCK) on ba.stat_id = bs.id and ba.enable_flag = '1'
+	<where>
+		bc.enable_flag = '1' and bc.comp_type = '3' and bs.id is not null
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="comp_id != null">
+			and bc.id = #{comp_id}
+		</if>
+  	</where>
+  </select>
+  
+  <select id="fetchWindowStatList" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean" resultType="java.util.HashMap">
+	select
+		bs.id,
+		bs.stat_name,
+		bc.id as comp_id,
+		bc.comp_name
+	from base_station bs WITH(NOLOCK)
+	left join base_company bc WITH(NOLOCK) on bs.comp_id = bc.id
+	<where>
+		bs.enable_flag = '1'
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+			and bc.id = #{comp_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+  	</where>
+  	order by bc.comp_name, bs.stat_name
+  </select>
+  
+  <select id="statPartList" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean" resultType="java.util.HashMap">
+	select distinct
+		bs.stat_name,
+		bs.id
+	from base_company bc WITH(NOLOCK)
+	left join base_station bs WITH(NOLOCK) on bs.comp_id = bc.id and bs.enable_flag = '1' 
+	left join base_area ba WITH(NOLOCK) on ba.stat_id = bs.id and ba.enable_flag = '1'
+	<where>
+		bc.enable_flag = '1' and bc.comp_type = '3' and bs.id is not null 
+		<if test="emp_type == 2">
+          and bs.stat_type in ('2','3')
+        </if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="comp_id != null">
+			and bc.id = #{comp_id}
+		</if>
+  	</where>
+  </select>
+  
+  <select id="statSyncByErpListPage" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseStationSearchBean">
+	  select _temp.* from (
+		SELECT *		 
+		  FROM 
+		base_stat_sync t WITH(NOLOCK)
+	  	WHERE 1 = 1
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( erp_stat_name )">
+	  		<bind name="like_erp_stat_name" value="'%' + erp_stat_name + '%'" />
+	  		and t.erp_stat_name like #{like_erp_stat_name}
+	  	</if>
+	) _temp
+  	order by _temp.create_timestamp desc
+  </select>
+</mapper>

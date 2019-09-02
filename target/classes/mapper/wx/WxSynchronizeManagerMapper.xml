@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.wx.mapper.WxSynchronizeManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="getSynchronizedElevatorList" resultType="com.zxtech.ess.module.wx.bean.WechatElevatorPropertyInfoBean">
+	SELECT
+		be.asset_num AS elevator_code,
+		bp.property_code AS cust_code,
+		bp.property_name AS cust_name,
+		be.contract_code,
+		(
+			select
+			comp_name
+			from base_company WITH(NOLOCK)
+			where id = bc1.p_area_id
+		) as area_name,
+		(
+			SELECT
+				CASE
+			WHEN (
+				SELECT
+					CASE
+				WHEN bc4.comp_type = '3'
+				AND bc4.p_comp_id IN (
+					SELECT
+						bc5.id
+					FROM
+						base_company bc5 WITH(NOLOCK)
+					WHERE
+						bc5.comp_type = '3'
+				) THEN
+					bc4.comp_name
+				ELSE
+					''
+				END first_temp_name1
+				FROM
+					base_company bc4
+				WHERE
+					bc4.id = ml.comp_id
+				AND bc4.enable_flag = '1'
+			) != '' THEN
+				bc8.comp_name
+			ELSE
+				(
+					SELECT
+						CASE
+					WHEN bc6.comp_type = '3'
+					AND bc6.p_comp_id NOT IN (
+						SELECT
+							bc7.id
+						FROM
+							base_company bc7 WITH(NOLOCK)
+						WHERE
+							bc7.comp_type = '3'
+					) THEN
+						bc6.comp_name
+					ELSE
+						''
+					END first_temp_name2
+					FROM
+						base_company bc6
+					WHERE
+						bc6.id = ml.comp_id
+					AND bc6.enable_flag = '1'
+				)
+			END first_temp_name
+			FROM
+				base_company bc8 WITH(NOLOCK)
+			WHERE
+				bc8.id = bc1.p_comp_id
+			AND bc8.enable_flag = '1'
+		) AS first_level_comp_name,
+		(
+			SELECT
+				CASE
+			WHEN bc2.comp_type = '3'
+			AND bc2.p_comp_id IN (
+				SELECT
+					bc3.id
+				FROM
+					base_company bc3 WITH(NOLOCK)
+				WHERE
+					bc3.comp_type = '3'
+			) THEN
+				bc2.comp_name
+			ELSE
+				''
+			END second_temp_name
+			FROM
+				base_company bc2 WITH(NOLOCK)
+			WHERE
+				bc2.id = ml.comp_id
+			AND bc2.enable_flag = '1'
+		) AS secondary_comp_name,
+		be.create_user,
+		case when be.create_timestamp is null then getdate() else be.create_timestamp end as create_timestamp,
+		case when be.create_timestamp is null then getdate() else be.create_timestamp end as syn_update_timestamp
+	FROM
+		base_elevator be WITH(NOLOCK)
+	LEFT JOIN mt_contract_dtl ml ON be.id = ml.asset_id and ml.contract_code=be.contract_code
+	LEFT JOIN base_property bp WITH(NOLOCK) ON be.use_customer = bp.id
+	LEFT JOIN base_company bc1 WITH(NOLOCK) ON ml.comp_id = bc1.id
+	WHERE
+		be.enable_flag = '1'
+	AND be.asset_num NOT IN (
+		'直梯无合同',
+		'扶梯无合同'
+	)
+	<if test="last_sync_time != null">
+		AND
+		<![CDATA[ 
+		be.create_timestamp > #{last_sync_time, jdbcType=TIMESTAMP}  
+  	]]>
+  	</if>
+  	ORDER BY ml.comp_id, ml.stat_id, ml.asset_id
+  </select>
+  
+  <select id="getSynchronizedUpdateElevatorList" resultType="com.zxtech.ess.module.wx.bean.WechatElevatorPropertyInfoBean">
+	SELECT
+		be.asset_num AS elevator_code,
+		bp.property_code AS cust_code,
+		bp.property_name AS cust_name,
+		be.contract_code,
+		(
+			select
+			comp_name
+			from base_company WITH(NOLOCK)
+			where id = bc1.p_area_id
+		) as area_name,
+		(
+			SELECT
+				CASE
+			WHEN (
+				SELECT
+					CASE
+				WHEN bc4.comp_type = '3'
+				AND bc4.p_comp_id IN (
+					SELECT
+						bc5.id
+					FROM
+						base_company bc5 WITH(NOLOCK)
+					WHERE
+						bc5.comp_type = '3'
+				) THEN
+					bc4.comp_name
+				ELSE
+					''
+				END first_temp_name1
+				FROM
+					base_company bc4 WITH(NOLOCK)
+				WHERE
+					bc4.id = ml.comp_id
+				AND bc4.enable_flag = '1'
+			) != '' THEN
+				bc8.comp_name
+			ELSE
+				(
+					SELECT
+						CASE
+					WHEN bc6.comp_type = '3'
+					AND bc6.p_comp_id NOT IN (
+						SELECT
+							bc7.id
+						FROM
+							base_company bc7 WITH(NOLOCK)
+						WHERE
+							bc7.comp_type = '3'
+					) THEN
+						bc6.comp_name
+					ELSE
+						''
+					END first_temp_name2
+					FROM
+						base_company bc6 WITH(NOLOCK)
+					WHERE
+						bc6.id = ml.comp_id
+					AND bc6.enable_flag = '1'
+				)
+			END first_temp_name
+			FROM
+				base_company bc8 WITH(NOLOCK)
+			WHERE
+				bc8.id = bc1.p_comp_id
+			AND bc8.enable_flag = '1'
+		) AS first_level_comp_name,
+		(
+			SELECT
+				CASE
+			WHEN bc2.comp_type = '3'
+			AND bc2.p_comp_id IN (
+				SELECT
+					bc3.id
+				FROM
+					base_company bc3 WITH(NOLOCK)
+				WHERE
+					bc3.comp_type = '3'
+			) THEN
+				bc2.comp_name
+			ELSE
+				''
+			END second_temp_name
+			FROM
+				base_company bc2 WITH(NOLOCK)
+			WHERE
+				bc2.id = ml.comp_id
+			AND bc2.enable_flag = '1'
+		) AS secondary_comp_name,
+		be.create_user,
+		case when be.create_timestamp is null then getdate() else be.create_timestamp end as create_timestamp,
+		getdate() as syn_update_timestamp
+	FROM
+		base_elevator be WITH(NOLOCK)
+	LEFT JOIN mt_contract_dtl ml WITH(NOLOCK) ON be.id = ml.asset_id and ml.contract_code=be.contract_code
+	LEFT JOIN base_property bp WITH(NOLOCK) ON be.use_customer = bp.id
+	LEFT JOIN base_company bc1 WITH(NOLOCK) ON ml.comp_id = bc1.id
+	WHERE
+		be.enable_flag = '1'
+	AND be.asset_num NOT IN (
+		'直梯无合同',
+		'扶梯无合同'
+	)
+	<if test="last_sync_time != null">
+		AND
+		<![CDATA[ 
+		be.last_update_timestamp > #{last_sync_time, jdbcType=TIMESTAMP}  
+  		]]>
+  	</if>
+  	ORDER BY ml.comp_id, ml.stat_id, ml.asset_id
+  </select>
+</mapper>

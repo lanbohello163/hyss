@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.api.mapper.HRManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <select id="getCompIdListByCompCode" resultType="java.util.HashMap">
+  	SELECT
+		t1.hr_comp_code,
+		t1.erp_comp_name,
+		t2.id
+	FROM
+		base_comp_sync t1 WITH(NOLOCK)
+	LEFT JOIN base_company t2 WITH(NOLOCK)
+	ON t2.enable_flag = 1
+	AND t1.id = t2.erp_comp_id
+	WHERE t1.enable_flag = 1
+  </select>
+  
+</mapper>

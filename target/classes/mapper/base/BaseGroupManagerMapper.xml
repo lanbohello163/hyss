@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseGroupManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <sql id="querySql">
+	  select _temp.* from (
+		SELECT t2.comp_name,t3.stat_name,t4.area_name,t5.emp_name group_manager_name
+		,t5.pda_position,t6.dict_name state,t7.dict_name group_type_name,t1.*,
+		(select COUNT(*) FROM base_employee WITH(NOLOCK) WHERE group_id = t1.id and enable_flag='1') group_member_num,
+		(SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM base_employee WITH(NOLOCK) WHERE group_id = t1.id and enable_flag='1') comp_disable_flag
+		 
+		FROM base_group t1 WITH(NOLOCK)
+		LEFT JOIN base_company t2 WITH(NOLOCK) ON t1.comp_id = t2.id
+		LEFT JOIN base_station t3 WITH(NOLOCK) ON t1.stat_id = t3.id
+		LEFT JOIN base_area t4 WITH(NOLOCK) ON t1.area_id = t4.id
+		LEFT JOIN base_employee t5 WITH(NOLOCK) ON t1.group_manager = t5.emp_code and t5.enable_flag='1'
+		LEFT JOIN sys_dictionary t6 WITH(NOLOCK) ON t1.enable_flag = t6.dict_value AND t6.dict_type = 'enable_flag'
+		LEFT JOIN base_dictionary t7 WITH(NOLOCK) ON t1.group_type = t7.dict_code and t7.dict_type = 'group_type' 
+	  	WHERE 1 = 1
+	  	<if test="comp_id != null">
+	  		and t1.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and t2.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="stat_id != null">
+	  		and t1.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and t3.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="area_id != null">
+	  		and t1.area_id = #{area_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( area_name )">
+	  		<bind name="like_area_name" value="'%' + area_name + '%'" />
+	  		and t4.area_name like #{like_area_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( group_name )">
+	  		<bind name="like_group_name" value="'%' + group_name + '%'" />
+	  		and t1.group_name like #{like_group_name}
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and t1.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and t1.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and t1.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  	order by _temp.id desc
+  </sql>
+  
+  <select id="baseGroupPagingList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseGroupSearchBean">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="getReportList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseGroupSearchBean"
+  	useCache="false" timeout="5000">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="groupList" parameterType="com.zxtech.ess.module.base.bean.BaseGroupSearchBean" resultType="java.util.HashMap">
+	select
+		bg.*
+	from base_group bg WITH(NOLOCK)
+	<where>
+		bg.enable_flag = '1'
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and bg.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bg.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bg.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="comp_id != null">
+			and bg.comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and bg.stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and bg.area_id = #{area_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( group_name )">
+	  		<bind name="like_group_name" value="'%' + group_name + '%'" />
+	  		and bg.group_name like #{like_group_name}
+	  	</if>
+  	</where>
+  	order by bg.group_name
+  </select>
+</mapper>

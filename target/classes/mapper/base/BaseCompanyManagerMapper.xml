@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseCompanyManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  <resultMap id="BaseResultMap" type="com.zxtech.ess.module.gen.bean.BaseCompany">
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="erp_comp_id" jdbcType="INTEGER" property="erp_comp_id" />
+    <result column="comp_code" jdbcType="NVARCHAR" property="comp_code" />
+    <result column="comp_name" jdbcType="NVARCHAR" property="comp_name" />
+    <result column="comp_full_name" jdbcType="NVARCHAR" property="comp_full_name" />
+    <result column="comp_type" jdbcType="CHAR" property="comp_type" />
+    <result column="comp_address" jdbcType="NVARCHAR" property="comp_address" />
+    <result column="p_comp_id" jdbcType="INTEGER" property="p_comp_id" />
+    <result column="comp_state" jdbcType="NVARCHAR" property="comp_state" />
+    <result column="comp_province" jdbcType="NVARCHAR" property="comp_province" />
+    <result column="comp_city" jdbcType="NVARCHAR" property="comp_city" />
+    <result column="comp_district" jdbcType="NVARCHAR" property="comp_district" />
+    <result column="comp_tel" jdbcType="NVARCHAR" property="comp_tel" />
+    <result column="enable_flag" jdbcType="CHAR" property="enable_flag" />
+    <result column="create_user" jdbcType="NVARCHAR" property="create_user" />
+    <result column="create_timestamp" jdbcType="TIMESTAMP" property="create_timestamp" />
+    <result column="last_update_user" jdbcType="NVARCHAR" property="last_update_user" />
+    <result column="last_update_timestamp" jdbcType="TIMESTAMP" property="last_update_timestamp" />
+    <result column="last_update_remark" jdbcType="NVARCHAR" property="last_update_remark" />
+    <result column="source_id" jdbcType="NVARCHAR" property="source_id" />
+    <result column="p_area_id" jdbcType="INTEGER" property="p_area_id" />
+    <result column="region_state_name" jdbcType="NVARCHAR" property="region_state_name" />
+    <result column="region_province_name" jdbcType="NVARCHAR" property="region_province_name" />
+    <result column="region_city_name" jdbcType="NVARCHAR" property="region_city_name" />
+    <result column="region_district_name" jdbcType="NVARCHAR" property="region_district_name" />
+  </resultMap>
+    
+  <select id="getCompanyList" resultType="java.util.HashMap" parameterType="java.lang.Integer">
+	SELECT
+		t1.id,
+		t1.erp_comp_id,
+		t1.comp_code,
+		t1.comp_name,
+		t1.comp_full_name,
+		t1.comp_type,
+		t1.comp_address,
+		t1.p_comp_id,
+		t2.comp_name as p_comp_name,
+		t1.comp_state,
+		t1.comp_province,
+		t1.comp_city,
+		t1.comp_district,
+		t1.region_state_name as comp_state_name,
+		t1.region_province_name as comp_province_name,
+		t1.region_city_name as comp_city_name,
+		t1.region_district_name as comp_district_name,
+		(select dict_name from sys_dictionary sd1 WITH(NOLOCK) where sd1.dict_type='comp_type' and sd1.dict_value=t1.comp_type) comp_type_name,
+		t1.comp_tel,
+		t1.last_update_timestamp,
+		CASE t1.comp_type WHEN 3 THEN (CASE WHEN(SELECT COUNT (*) FROM base_company t2 WHERE t2.p_comp_id = t1.id) > 0 THEN '' WHEN(SELECT COUNT (*) FROM v_base_comp_dept_std_all t2 WHERE t2.comp_id = t1.id) > 0 THEN 'closed' ELSE 'open' END) ELSE '' END state,
+		bcs.erp_entity_code as erp_sync_entity_code,
+		bcs.id as erp_sync_comp_id,
+		bcs.erp_comp_code as erp_sync_comp_code,
+		bcs.erp_comp_name as erp_sync_comp_name,
+		bcs.hr_comp_code,
+		t1.enable_flag
+	FROM
+		base_company t1 WITH(NOLOCK)
+		left join base_company t2 WITH(NOLOCK) on t2.id = t1.p_comp_id
+		left join base_comp_sync bcs WITH(NOLOCK) on bcs.id = t1.erp_comp_id
+  </select>
+  <select id="getDeptStdFar" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT * FROM v_base_comp_dept_std_all WHERE comp_id = #{id}
+  </select>
+  <select id="getDeptList" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		convert(varchar,t1.id) + 'd' id,
+		t1.dept_name,
+		t1.dept_name comp_name,
+		'4' comp_type,
+		t1.erp_dept_name,
+		t1.hr_dept_name,
+		t2.dict_name dept_type,
+		t3.emp_name dept_manager,
+		t4.dept_name p_dept_name,
+		t1.dept_tel,
+		t1.enable_flag,
+		CASE WHEN(SELECT COUNT(*) FROM base_dept t2 WITH(NOLOCK) WHERE t2.p_dept_id = t1.id) > 0 THEN 'closed' WHEN(SELECT COUNT(*) FROM base_station t2 WITH(NOLOCK) WHERE t2.dept_id = t1.id) > 0 THEN 'closed' ELSE 'open' END state,
+		CASE WHEN(SELECT COUNT(*) FROM base_dept t2 WITH(NOLOCK) WHERE t2.p_dept_id = t1.id) > 0 THEN '1' ELSE '0' END have_dept
+	FROM
+		base_dept t1 WITH(NOLOCK)
+	LEFT JOIN sys_dictionary t2 WITH(NOLOCK) ON t2.dict_value = t1.dept_type AND t2.dict_type = 'dept_type'
+	LEFT JOIN base_employee t3 WITH(NOLOCK) ON t3.emp_code = t1.dept_manager and t3.enable_flag='1'
+	LEFT JOIN base_dept t4 WITH(NOLOCK) ON t4.id = t1.p_dept_id
+	WHERE convert(varchar,t1.p_dept_id) + 'd' = #{id}
+  </select>
+  <select id="getStationList" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		convert(varchar,t1.id) + 's' id,
+		t1.stat_name comp_name,
+		'6' comp_type,
+		t1.stat_name,
+		t2.comp_name stat_comp_name,
+		t3.dept_name stat_dept_name,
+		t4.dict_name stat_type,
+		t5.emp_name stat_manager,
+		t1.stat_address,
+		t1.mgr_area stat_mgr_area,
+		t1.office_tel stat_tel,
+		t1.licensed_contractor_name,
+	  	t6.dict_name practices,
+		CASE t1.is_use_pda WHEN 'N' THEN '否' ELSE 	'是' END stat_is_use_pda,
+		t1.enable_flag,
+		CASE WHEN(SELECT COUNT(*) FROM base_area t2 WITH(NOLOCK) WHERE t2.stat_id = t1.id) > 0 THEN 'closed' ELSE 'open' END state
+	FROM
+		base_station t1 WITH(NOLOCK)
+	LEFT JOIN base_company t2 WITH(NOLOCK) ON t2.id = t1.comp_id
+	LEFT JOIN base_dept t3 WITH(NOLOCK) ON t3.id = t1.dept_id
+	LEFT JOIN base_dictionary t4 WITH(NOLOCK) ON t4.dict_code = t1.stat_type AND t4.dict_type = 'stat_type'
+	LEFT JOIN base_employee t5 WITH(NOLOCK) ON t5.emp_code = t1.stat_manager and t5.enable_flag='1'
+	LEFT JOIN base_dictionary t6 WITH(NOLOCK) ON t6.dict_code = t1.stat_type AND t6.dict_type = 'practices'
+	WHERE convert(varchar,t1.dept_id) + 'd' = #{id}
+  </select>
+  <select id="getAreaList" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		convert(varchar,t1.id) + 'a' id,
+		t1.area_name comp_name,
+		'7' comp_type,
+		t1.area_name,
+		t1.area_code,
+		t2.stat_name area_stat_name,
+		t3.emp_name area_manager,
+		t1.mgr_area area_mgr_area,
+		t1.enable_flag,
+    	CASE WHEN(SELECT COUNT(*) FROM base_group t2 WITH(NOLOCK) WHERE t2.area_id = t1.id) > 0 THEN 'closed' ELSE 'open' END state
+	FROM
+		base_area t1 WITH(NOLOCK)
+	LEFT JOIN base_station t2 WITH(NOLOCK) ON t2.id = t1.stat_id
+	LEFT JOIN base_employee t3 WITH(NOLOCK) ON t3.emp_code = t1.area_manager and t3.enable_flag='1'
+	WHERE convert(varchar,t1.stat_id) + 's' = #{id}
+  </select>
+  <select id="getGroupList" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		convert(varchar,t1.id) + 'g' id,
+		t1.group_name comp_name,
+		t1.group_name,
+		t1.group_code,
+		t2.dict_name group_type,
+		t3.area_name group_area_name,
+		t4.emp_name group_manager,
+		t1.mgr_area group_mgr_area,
+		t1.enable_flag,
+		'8' comp_type,
+		'open' state
+	FROM
+		base_group t1 WITH(NOLOCK)
+	LEFT JOIN base_dictionary t2 WITH(NOLOCK) ON t2.dict_code = t1.group_type AND t2.dict_type = 'group_type'
+	LEFT JOIN base_area t3 WITH(NOLOCK) ON t3.id = t1.area_id
+	LEFT JOIN base_employee t4 WITH(NOLOCK) ON t4.emp_code = t1.group_manager and t4.enable_flag='1'
+	WHERE convert(varchar,t1.area_id) + 'a' = #{id}
+  </select>
+  <select id="getReportList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean"
+  	useCache="false" timeout="5000">
+	  WITH T AS (
+		SELECT *, CAST (id AS VARBINARY(MAX)) AS px
+		FROM v_base_comp_export AS A
+		WHERE NOT EXISTS (SELECT * FROM v_base_comp_export WHERE id = A.p_comp_id)
+		UNION ALL
+		SELECT A.*, CAST (B.px + CAST (A.id AS VARBINARY) AS VARBINARY (MAX) )
+		FROM v_base_comp_export AS A
+		JOIN T AS B ON A.p_comp_id = B.id
+	  ) SELECT * FROM T ORDER BY px
+</select>
+
+<select id="compList" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean" resultType="java.util.HashMap">
+	with temp(id, p_comp_id, comp_name, comp_type) as
+	(
+		select id, p_comp_id, comp_name, comp_type from base_company WITH(NOLOCK) where enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_type )">
+			and comp_type = #{comp_type}
+		</if>
+		union all
+		select bc.id, bc.p_comp_id, bc.comp_name, bc.comp_type from base_company as bc WITH(NOLOCK) inner join temp on temp.id = bc.p_comp_id and bc.enable_flag = '1'
+	)
+	select distinct
+		bc.comp_name,
+		bc.comp_type,
+		bc.id
+	from temp bc WITH(NOLOCK)
+	left join base_station bs WITH(NOLOCK) on bs.comp_id = bc.id and bs.enable_flag = '1'
+	left join base_area ba WITH(NOLOCK) on ba.stat_id = bs.id and ba.enable_flag = '1'
+	where
+		1 = 1
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and ba.id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and bs.id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	order by bc.comp_type, bc.comp_name
+</select>
+<select id="getUserCompanyListByDataid" resultType="java.util.HashMap" parameterType="java.util.List">
+	with temp(id, comp_name, comp_type) as
+	(
+		select id, comp_name,comp_type from base_company WITH(NOLOCK) where enable_flag='1' 
+		 <if test="list != null and list.size() > 0">
+			and id in <foreach collection="list" index="index" item="item" open="(" separator="," close=")">#{item}</foreach>
+		 </if> 
+		union all
+		select bc.id, bc.comp_name,bc.comp_type from base_company as bc WITH(NOLOCK) inner join temp on temp.id = bc.p_comp_id and bc.enable_flag = '1' 
+	)
+	select id, comp_name,comp_type from temp t WITH(NOLOCK) where t.comp_type='3'
+	group by id, comp_name,comp_type
+	order by comp_name
+</select>
+<select id="pareaList" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean" resultType="java.util.HashMap">
+		select distinct
+			bc.comp_name,
+			bc.id
+		from base_company bc WITH(NOLOCK)
+	where
+		1 = 1
+			and comp_type = '2'
+			and bc.enable_flag = '1'
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+</select>
+<select id="areaCompList" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean" resultType="java.util.HashMap">
+	with temp(id, p_comp_id, comp_name, comp_type) as
+	(
+		select id, p_comp_id, comp_name, comp_type from base_company WITH(NOLOCK) where enable_flag = '1'
+		<if test="p_comp_id != null">
+			and p_comp_id = #{p_comp_id}
+		</if>
+		union all
+		select bc.id, bc.p_comp_id, bc.comp_name, bc.comp_type from base_company as bc WITH(NOLOCK) inner join temp on temp.id = bc.p_comp_id and bc.enable_flag = '1'
+	)
+	select distinct
+		bc.comp_name,
+		bc.id
+	from temp bc WITH(NOLOCK)
+	where
+		1 = 1
+		<if test="compIdList != null and compIdList.size() > 0">
+			and bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	order by bc.comp_name
+</select>
+  <select id="compSyncByErpListPage" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean">
+	  select _temp.* from (
+		SELECT *		 
+		  FROM 
+		base_comp_sync t WITH(NOLOCK)
+	  	WHERE 1 = 1
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( sync_entity_code )">
+	  		<bind name="like_sync_entity_code" value="'%' + sync_entity_code + '%'" />
+	  		and t.erp_entity_code like #{like_sync_entity_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( sync_comp_name )">
+	  		<bind name="like_sync_comp_name" value="'%' + sync_comp_name + '%'" />
+	  		and t.erp_comp_name like #{like_sync_comp_name}
+	  	</if>
+	) _temp
+  	order by _temp.create_timestamp desc
+  </select>
+
+  <select id="fetchPAreaIdByCompId" resultType="java.lang.Integer" useCache="false">
+	with temp(id, p_comp_id, comp_name, comp_type, enable_flag) as
+		(
+			select id, p_comp_id, comp_name, comp_type, enable_flag from base_company WITH(NOLOCK) where id = #{p_comp_id}
+			union all
+			select bc.id, bc.p_comp_id, bc.comp_name, bc.comp_type, bc.enable_flag from base_company as bc WITH(NOLOCK) inner join temp on temp.p_comp_id = bc.id and bc.enable_flag = '1'
+		)
+	select top 1 bc.id from temp bc WITH(NOLOCK) where bc.comp_type = '2' order by bc.enable_flag desc
+  </select>
+  
+  <select id="fetchAllPCompIdsByAreaId" resultType="java.lang.Integer" parameterType="java.lang.Integer">
+	with temp as
+	(
+	   select bc1.id from base_company bc1 WITH(NOLOCK) where bc1.p_comp_id = #{p_comp_id} AND bc1.enable_flag = '1'
+	   union all
+	   select bc2.id from base_company bc2 WITH(NOLOCK) join temp bc1 on bc2.p_comp_id = bc1.id AND bc2.enable_flag = '1'
+	)
+	select * from temp WITH(NOLOCK) ORDER BY id 
+  </select>
+  <select id="getpareaidbycompid" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean">
+		SELECT
+			bc.p_area_id,
+		    bcy.comp_name as p_area_name	
+		FROM
+			base_company bc WITH(NOLOCK)
+			LEFT JOIN base_company bcy WITH(NOLOCK) ON bcy.id = bc.p_area_id 
+			AND bcy.comp_type = '2'
+			where bc.id = #{comp_id}
+  </select>
+  	
+  	<!-- 根据主键查询分公司信息 -->
+  	<select id="getCompInfoById" parameterType="com.zxtech.ess.module.gen.bean.BaseCompany" resultMap="BaseResultMap">
+  		select 
+  			id,
+  			comp_type,
+  			p_comp_id,
+  			comp_name 
+  		from 
+  			base_company WITH(NOLOCK)
+  		where 
+  			enable_flag = #{enable_flag} and id = #{id} 
+  	</select>
+  	
+  	<!-- 根据当前所属司的上级id查询上级comp_type是否为2 -->
+  	<select id="getPCompInfoByPCompId" parameterType="java.lang.Integer" resultType="com.zxtech.ess.module.gen.bean.BaseCompany">
+  		select 
+  			comp_type
+  		from
+  			base_company WITH(NOLOCK)
+  		where
+  			enable_flag = '1' and id = #{p_comp_id}
+  	</select>
+  	
+  	<!-- 创建所属区域临时表 -->
+  	<sql id="withFirstLevelCompTempTableSql">
+		WITH temp ( id ) AS (
+			select 
+				 id
+			from 
+				base_company WITH(NOLOCK) 
+			where  
+				enable_flag = '1' and comp_type = '2'
+				<if test="comp_id != null">
+					and id = #{comp_id}
+				</if>
+		)  	
+  	</sql>
+  	
+  	<!-- 查询所有一级司 -->
+	<select id="getFirstLevelCompList" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean" resultType="java.util.HashMap">
+		<include refid="withFirstLevelCompTempTableSql"></include>
+		SELECT
+			distinct
+			bc.id,
+			bc.comp_name 
+		FROM
+			base_company bc WITH(NOLOCK),
+			temp WITH(NOLOCK)
+		WHERE
+			bc.enable_flag = '1' 
+			AND bc.p_comp_id = temp.id 
+			AND bc.comp_type = '3'		
+			<if test="compIdList != null and compIdList.size() > 0">
+				AND bc.id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+			</if>
+			<if test="p_comp_id != null">
+				AND bc.p_comp_id = #{p_comp_id}
+			</if>
+		order by bc.id
+	</select>
+	
+	<!-- 分公司子公司获取一级分公司临时表  -->  
+    <sql id="withNotFirstCompGetItsFirstLevelCompTempTableSql">
+		WITH temp ( p_comp_id ) AS (
+			select 
+				p_comp_id 
+			from 
+				base_company WITH(NOLOCK)
+			where  
+				enable_flag = '1' and comp_type != '2' and id = #{comp_id}
+		)    	
+    </sql>
+    
+    <!-- 查询分公司子公司所属一级分公司 -->
+    <select id="getItsFirstLevelCompByCompId" parameterType="com.zxtech.ess.module.base.bean.BaseCompanySearchBean" resultType="java.util.HashMap">
+    	<include refid="withNotFirstCompGetItsFirstLevelCompTempTableSql"></include>
+		SELECT
+			distinct
+			bc.id,
+			bc.comp_name 
+		FROM
+			base_company bc WITH(NOLOCK),
+			temp WITH(NOLOCK)
+		WHERE
+			bc.enable_flag = '1' 
+			AND bc.id = temp.p_comp_id 
+			AND bc.comp_type = '3'
+		order by bc.id    	
+    </select>
+    
+</mapper>

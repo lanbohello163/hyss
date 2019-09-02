@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.sys.mapper.SysParameterManagerMapper">
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache"/>
+  <select id="sysParameterPagingList" resultType="java.util.HashMap">
+	   select
+			*
+		from
+			sys_parameter WITH(NOLOCK)
+		where
+			enable_flag = '1'
+	  	order by param_key
+  </select>
+</mapper>

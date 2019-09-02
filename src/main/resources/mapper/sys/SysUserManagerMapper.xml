@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.sys.mapper.SysUserManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="getListWithPaging" parameterType="com.zxtech.ess.module.sys.bean.SysUserSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+			su.id,
+			su.sso_code,
+			su.user_passwd,
+			be.emp_name,
+			be.emp_position,
+			case when be.enable_flag = '1' then '在职' else '离职' end as work_status,
+			be.comp_id,
+			be.emp_tel,
+			be.emp_email,
+			be.pda_position,
+			be.type_hotline,
+			be.hotline_manager,
+			be.type_regular_check,
+			be.type_casual_check,
+			be.type_mt,
+			be.type_rota_engineer,
+			su.emp_code,
+			su.enable_flag,
+			su.create_user,
+			su.create_timestamp,
+			su.last_update_user,
+			su.last_update_timestamp,
+			su.last_update_remark as user_roles,
+			bc.comp_name,
+			sd1.dict_name as pda_position_name,
+			sd2.dict_name as type_hotline_name
+		from sys_user su WITH(NOLOCK)
+		left join base_employee be WITH(NOLOCK) on be.emp_code=su.emp_code and be.enable_flag='1'
+		left join base_company bc WITH(NOLOCK) on be.comp_id=bc.id
+		left join sys_dictionary sd1 WITH(NOLOCK) on be.pda_position=sd1.dict_value and sd1.dict_type='pda_position'
+		left join sys_dictionary sd2 WITH(NOLOCK) on be.type_hotline=sd2.dict_value and sd2.dict_type='key_type'
+		where 1 = 1
+		and su.enable_flag = '1'
+		and su.sso_code != 'admin'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( user_realname )">
+	  		<bind name="like_user_realname" value="'%' + user_realname + '%'" />
+	  		and be.emp_name like #{like_user_realname}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( sso_code )">
+	  		<bind name="like_sso_code" value="'%' + sso_code + '%'" />
+	  		and su.sso_code like #{like_sso_code}
+	  	</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and be.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and be.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and be.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+  
+  <select id="getSysUserDataPermissionByUserIdRoleId" parameterType="com.zxtech.ess.module.gen.bean.SysUserDataPermission" resultType="java.util.HashMap">
+  		select
+  			CONVERT(varchar(10),data_id) as data_id,
+  			data_type
+  		from 
+		sys_user_data_permission WITH(NOLOCK)
+		where
+			user_id = #{user_id}
+			and role_id = #{role_id}
+  </select>
+</mapper>

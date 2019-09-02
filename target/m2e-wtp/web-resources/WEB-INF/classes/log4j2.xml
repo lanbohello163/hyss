@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- status设置为debug，可以在console看到Log4j2启动和加载配置文件时的打印信息，设置成off，即可关闭状态日志 -->
+<!-- monitorInterval是用来设置配置文件的动态加载时间的，单位是秒，表示每monitorInterval秒配置文件会动态加载一次 -->
+<!-- <configuration status="debug" monitorInterval="30"> -->
+<configuration status="info">
+	<!-- 定义所有的appender -->
+	<appenders>
+		<!-- 打印出所有错误信息，每次大小超过size，则这size大小的日志会自动存入按年份-月份建立的文件夹下面并进行压缩，作为存档 -->
+		<!-- immediateFlush="false" 不会马上刷到磁盘 -->
+		<RollingFile name="infoLog" fileName="logs/hyss_info.log"
+			filePattern="logs/$${date:yyyy-MM}/hyss_info-%d{MM-dd-yyyy}-%i.log.gz"
+			immediateFlush="true">
+			<ThresholdFilter level="info" onMatch="accept"
+				onMismatch="deny" />
+			<!-- 一共生成多少个压缩文件，如果压缩文件个数超出10个的话会覆盖之前的 -->
+			<!-- <DefaultRolloverStrategy max="10" /> -->
+			<PatternLayout
+				pattern="%d{yyyy-MM-dd 'at' HH:mm:ss z} %-5level %class{36} %L %M - %msg%xEx%n" />
+			<SizeBasedTriggeringPolicy size="5MB" />
+		</RollingFile>
+
+	</appenders>
+
+	<!-- 定义logger，只有定义了logger并引入的appender，appender才会生效 -->
+	<loggers>
+		<!-- 建立一个默认的root的logger -->
+		<root level="error">
+			<appender-ref ref="infoLog" level="error" />
+		</root>
+	</loggers>
+</configuration>

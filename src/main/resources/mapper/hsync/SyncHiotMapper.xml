@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.hsync.mapper.SyncHiotMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="comboboxBaseCompanyData">
+	select
+		id as comp_id,
+		comp_name
+	from
+		base_company WITH(NOLOCK)
+	where
+		enable_flag = '1'
+		and comp_type = '3'
+	order by
+		comp_name
+  </select>
+  
+  <select id="comboboxBaseStationData">
+	select
+		id as stat_id,
+		stat_name
+	from
+		base_station WITH(NOLOCK)
+	where
+		enable_flag = '1'
+		and comp_id = #{comp_id}
+	order by
+		stat_name
+  </select>
+  
+  <select id="fetchBaseElevatorData">
+	select
+		be.id as asset_id,
+		be.registered_code,
+		be.asset_num,
+		sd1.dict_value as ele_category,
+		be.control_operation_series,
+		be.control_operation_type,
+		be.ele_model,
+		be.model_desc,
+		be.ele_product,
+		be.ele_floor,
+		be.ele_stop,
+		be.ele_door,
+		be.ele_speed,
+		be.ele_angle,
+		be.step_width,
+		be.ele_high,
+		be.ele_carry,
+		be.drive_way,
+		be.use_customer,
+		bp.property_code,
+		bp.property_name,
+		bkp.key_property_code,
+		bkp.key_property_name,
+		be.manufacture_unit,
+		be.manufacture_licence,
+		be.install_company,
+		be.install_do_date,
+		be.completion_date,
+		be.ele_city,
+		bproj.proj_name,
+		be.asset_num_address,
+		case when be.mansion_name is not null then be.mansion_name + be.ele_no else be.ele_no end as mansion_no,
+		sd2.dict_value as use_status,
+		(select max(fac.annual_check_real) from file_annual_check fac WITH(NOLOCK) where fac.asset_id = be.id) as annual_check_real,
+		'合格' as check_result,
+		be.annual_check_date,
+		be.out_factory_date,
+		be.certificate_date,
+		'在保' as mt_type,
+		mcd.comp_id,
+		bc.comp_code,
+		bc.comp_name,
+		mcd.stat_id,
+		be.monitor_teminal_type,
+		be.enable_flag,
+		be.create_user,
+		be.create_timestamp,
+		be.last_update_user,
+		be.last_update_timestamp,
+		be.last_update_remark,
+		be.sync_datetime,
+		be.source_id
+	from
+		base_elevator be WITH(NOLOCK)
+	left join
+		sys_dictionary sd1 WITH(NOLOCK) on sd1.dict_type = 'ele_category' and sd1.dict_value = be.ele_category
+	left join
+		sys_dictionary sd2 WITH(NOLOCK) on sd2.dict_type = 'use_status' and sd2.dict_value = be.use_status
+	left join
+		base_property bp WITH(NOLOCK) on bp.id = be.use_customer
+	left join
+		base_key_property bkp WITH(NOLOCK) on bkp.key_property_code = bp.key_property_code
+	left join
+		base_project bproj WITH(NOLOCK) on bproj.id = be.proj_id
+	left join
+		mt_contract_dtl mcd WITH(NOLOCK) on mcd.asset_id = be.id and mcd.contract_code = be.contract_code
+	left join
+		base_company bc WITH(NOLOCK) on bc.id = mcd.comp_id
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+			and be.enable_flag = '1'
+		</if>
+		<if test="comp_id != null">
+			and mcd.comp_id = #{comp_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+			<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+			and bc.comp_name like #{like_comp_name}
+		</if>
+		<if test="stat_id != null">
+			and mcd.stat_id = #{stat_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+			<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+			and exists(select 1 from base_station bs WITH(NOLOCK) where bs.id = mcd.stat_id and bs.stat_name like #{like_stat_name})
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( asset_num )">
+	  		<bind name="like_asset_num" value="'%' + asset_num + '%'" />
+			and be.asset_num like #{like_asset_num}
+		</if>
+	</where>
+	order by
+		asset_num
+  </select>
+</mapper>

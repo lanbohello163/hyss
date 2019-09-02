@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BasePrjPersonManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="basePrjPersonPagingList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BasePrjPersonSearchBean">
+  	SELECT t2.dict_name person_sex_value ,t1.* from base_project_person t1 WITH(NOLOCK)
+	LEFT JOIN sys_dictionary t2 WITH(NOLOCK) ON t2.dict_value = t1.person_sex AND t2.dict_type = 'emp_sex'
+	WHERE t1.enable_flag = '1' AND t1.proj_id = #{proj_id}
+  	order by t1.id desc
+  </select>
+</mapper>

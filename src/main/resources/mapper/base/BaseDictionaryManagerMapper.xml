@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseDictionaryManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <!-- author: lanb -->
+   <select id="fetchBaseDictionaryComboboxList" parameterType="com.zxtech.ess.module.base.bean.BaseDictionarySearchBean" resultType="java.util.HashMap">
+		select
+			bd1.id,
+			bd1.dict_type,
+			bd1.dict_type_name,
+			bd1.dict_name,
+			bd1.dict_code,
+			bd1.dict_sort,
+			bd1.p_dict_code,
+			bd1.p_dict_type,
+			bd1.dict_additional_value,
+			bd1.dict_remark
+		from base_dictionary bd1 WITH(NOLOCK)
+		where bd1.enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type )">
+	  		and bd1.dict_type = #{dict_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( p_dict_type )">
+	  		and bd1.p_dict_type = #{p_dict_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( p_dict_code )">
+	  		and bd1.p_dict_code = #{p_dict_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_additional_value )">
+	  		<choose>
+				<when test="dict_type == 'type_second'" >
+					and EXISTS (select d.dict_code,d.p_dict_code from base_dictionary d WITH(NOLOCK) where d.dict_code=bd1.dict_code and d.p_dict_code=#{dict_additional_value})
+				</when>
+				<otherwise>
+					and bd1.dict_additional_value = #{dict_additional_value}
+				</otherwise>
+			</choose> 
+	  		
+	  	</if>
+		order by bd1.dict_sort
+  </select>
+  
+  <select id="getListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseDictionarySearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+			bd.id,
+			bd.dict_type,
+			bd.dict_type_name,
+			bd.dict_name,
+			bd.dict_code,
+			bd.dict_sort,
+			bd.p_dict_code,
+			bd.p_dict_type,
+			bd.dict_additional_value,
+			bd.dict_remark,
+			bd.enable_flag,
+			sd_temp.dict_name as enable_flag_name,
+			bd.create_timestamp,
+			bd.last_update_timestamp,
+			sd.dict_name as p_dict_type_name,
+			bd_temp.dict_name as p_dict_code_name
+		
+		from base_dictionary bd WITH(NOLOCK)
+		left join sys_dictionary sd_temp WITH(NOLOCK) on sd_temp.dict_type = 'enable_flag' and sd_temp.dict_value = bd.enable_flag
+		left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type = 'base_dict_type' and sd.dict_value = bd.p_dict_type
+		left join base_dictionary bd_temp WITH(NOLOCK) on bd_temp.enable_flag = '1' and bd_temp.dict_type = bd.p_dict_type and bd_temp.dict_code = bd.p_dict_code
+		
+		where
+			1=1
+			and bd.dict_type in ('maintenance_factor', 'special_label', 'brakes_type','casual_check_activity','casual_check_category', 'item_position', 'mt_type')
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type_name )">
+	  		<bind name="like_dict_type_name" value="'%' + dict_type_name + '%'" />
+	  		and bd.dict_type_name like #{like_dict_type_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type )">
+	  		and bd.dict_type = #{dict_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_name )">
+	  		<bind name="like_dict_name" value="'%' + dict_name + '%'" />
+	  		and bd.dict_name like #{like_dict_name}
+	  	</if>
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	  	order by _temp.dict_type, _temp.p_dict_code, _temp.dict_sort
+  </select>
+  <select id="getContractListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseDictionarySearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+			bd.id,
+			bd.dict_type,
+			bd.dict_type_name,
+			bd.dict_name,
+			bd.dict_code,
+			bd.dict_sort,
+			bd.p_dict_code,
+			bd.p_dict_type,
+			bd.dict_additional_value,
+			bd.dict_remark,
+			bd.enable_flag,
+			sd_temp.dict_name as enable_flag_name,
+			bd.create_timestamp,
+			bd.last_update_timestamp,
+			sd.dict_name as p_dict_type_name,
+			bd_temp.dict_name as p_dict_code_name
+		
+		from base_dictionary bd WITH(NOLOCK)
+		left join sys_dictionary sd_temp WITH(NOLOCK) on sd_temp.dict_type = 'enable_flag' and sd_temp.dict_value = bd.enable_flag
+		left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type = 'base_dict_type' and sd.dict_value = bd.p_dict_type
+		left join base_dictionary bd_temp WITH(NOLOCK) on bd_temp.enable_flag = '1' and bd_temp.dict_type = bd.p_dict_type and bd_temp.dict_code = bd.p_dict_code
+		
+		where
+			1=1
+			and bd.dict_type in ('business_category', 'cease_reason_category', 'contract_category', 'contract_nature', 'extension_reason_category', 'group_type', 'practices', 'proj_type', 'stat_type', 'city', 'district', 'province', 'state')
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type_name )">
+	  		<bind name="like_dict_type_name" value="'%' + dict_type_name + '%'" />
+	  		and bd.dict_type_name like #{like_dict_type_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type )">
+	  		and bd.dict_type = #{dict_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_name )">
+	  		<bind name="like_dict_name" value="'%' + dict_name + '%'" />
+	  		and bd.dict_name like #{like_dict_name}
+	  	</if>
+	  	
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	  	order by _temp.dict_type, _temp.p_dict_code, _temp.dict_sort
+  </select>
+  <select id="getHotLineListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseDictionarySearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+			bd.id,
+			bd.dict_type,
+			bd.dict_type_name,
+			bd.dict_name,
+			bd.dict_code,
+			bd.dict_sort,
+			bd.p_dict_code,
+			bd.p_dict_type,
+			bd.dict_additional_value,
+			bd.dict_remark,
+			bd.enable_flag,
+			sd_temp.dict_name as enable_flag_name,
+			bd.create_timestamp,
+			bd.last_update_timestamp,
+			sd.dict_name as p_dict_type_name,
+			bd_temp.dict_name as p_dict_code_name
+		
+		from base_dictionary bd WITH(NOLOCK)
+		left join sys_dictionary sd_temp WITH(NOLOCK) on sd_temp.dict_type = 'enable_flag' and sd_temp.dict_value = bd.enable_flag
+		left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type = 'base_dict_type' and sd.dict_value = bd.p_dict_type
+		left join base_dictionary bd_temp WITH(NOLOCK) on bd_temp.enable_flag = '1' and bd_temp.dict_type = bd.p_dict_type and bd_temp.dict_code = bd.p_dict_code
+		
+		where
+			1=1
+			and bd.dict_type in ('knowledge_question_category', 'knowledge_question_child_category', 'knowledge_question_third_category', 'trap_situation')
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type_name )">
+	  		<bind name="like_dict_type_name" value="'%' + dict_type_name + '%'" />
+	  		and bd.dict_type_name like #{like_dict_type_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_type )">
+	  		and bd.dict_type = #{dict_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( dict_name )">
+	  		<bind name="like_dict_name" value="'%' + dict_name + '%'" />
+	  		and bd.dict_name like #{like_dict_name}
+	  	</if>
+	  	
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	  	order by _temp.dict_type, _temp.p_dict_code, _temp.dict_sort
+  </select>
+     <select id="getChinaListByType" parameterType="com.zxtech.ess.module.base.bean.BaseDictionarySearchBean" resultType="java.lang.String">
+		select
+			bd2.dict_code
+		from base_dictionary bd2 WITH(NOLOCK)
+		where 1=1
+		and bd2.enable_flag = '1'
+		and bd2.dict_type='state'
+		and bd2.dict_name='中国'
+  </select>
+</mapper>

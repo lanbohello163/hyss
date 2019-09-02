@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.sys.mapper.SysUserPromptManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="getListWithPaging" useCache="false" parameterType="com.zxtech.ess.module.sys.bean.SysUserPromptSearchBean" resultType="java.util.HashMap">
+	  select
+	  	DISTINCT
+	  	sup.*,
+	  	sd1.dict_name as prompt_type_name,
+	  	supr.user_id as is_read
+	  from sys_user_prompt sup WITH(NOLOCK)
+	  join sys_dictionary sd1 WITH(NOLOCK) on sd1.dict_type='prompt_type' and sd1.dict_value=sup.prompt_type
+	  left join sys_user_prompt_rel supr WITH(NOLOCK) on supr.prompt_id=sup.id and supr.user_id = #{user_id}
+  	  join sys_user_role_rel surr WITH(NOLOCK) on surr.user_id= #{user_id} and surr.role_id = #{role_id}
+  	  join sys_role_menu_func_rel srmfr WITH(NOLOCK) on surr.role_id=srmfr.role_id
+  	  join sys_function sf WITH(NOLOCK) on srmfr.func_id=sf.id and sup.prompt_url=sf.func_method
+	  where
+	  	sup.enable_flag = '1'
+	  <if test="@org.apache.commons.lang3.StringUtils@isNotBlank( prompt_type )">
+	  	and sup.prompt_type = #{prompt_type}
+	  </if>
+	  <if test="@org.apache.commons.lang3.StringUtils@isNotBlank( prompt_url )">
+	  	and sf.func_method = #{prompt_url}
+	  </if>
+	  <if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  	and (sup.emp_code = #{emp_code} or sup.emp_code is null)
+	  </if>
+	  <if test="areaIdList != null and areaIdList.size() > 0">
+	  	and sup.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+	  </if>
+	  <if test="statIdList != null and statIdList.size() > 0">
+		and sup.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+	  </if>
+	  <if test="compIdList != null and compIdList.size() > 0">
+		and sup.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+	  </if>
+	  order by sup.id desc
+  </select>
+</mapper>

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseMachineTypeManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+
+  <select id="getListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseMachineTypeSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+	   select
+	   		bmt.type_id,
+	   		bmt.last_update_timestamp,
+			bmt.ele_category,
+			(case when bmt.ele_category='1' then '直梯'
+				  when bmt.ele_category='2' then '扶梯'
+				  else '' end) as ele_category_name,
+			bmt.machine_type,
+			(case when bmt.machine_type ='1' then '机器分类'  
+				  when bmt.machine_type ='2' then '第一分类'
+				  when bmt.machine_type ='3' then '第二分类'
+				  when bmt.machine_type ='4' then '第三分类'
+				  else '' end) as machine_type_name, 
+			bmt.type_code,
+			bmt.type_desc,
+			bmt.enable_flag,
+			(case when bmt.enable_flag = '1' then '活动'
+				  else '禁用'  end) as enable_flag_name,
+			bmt.p_type_id,
+			bmt1.machine_type p_machine_type,
+			(case when bmt1.machine_type ='1' then '机器分类'  
+				  when bmt1.machine_type ='2' then '第一分类'
+				  when bmt1.machine_type ='3' then '第二分类'
+				  when bmt1.machine_type ='4' then '第三分类'
+				  else '' end) as p_machine_type_name,
+			bmt1.type_code p_type_code,
+			bmt1.type_desc p_type_desc
+		
+		from base_machine_type bmt WITH(NOLOCK)
+		left join base_machine_type bmt1 WITH(NOLOCK) on bmt.p_type_id = bmt1.type_id 
+
+		where
+			1=1
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( machine_type )">
+	  		and bmt.machine_type = #{machine_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_code )">
+	  	 <bind name="like_type_code" value="'%' + type_code + '%'" />
+	  		and bmt.type_code like #{like_type_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_desc )">
+	  	 <bind name="like_type_desc" value="'%' + type_desc + '%'" />
+	  		and bmt.type_desc like #{like_type_desc}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and bmt.enable_flag = #{enable_flag}
+	  	</if>
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	 order by _temp.type_id
+  </select>
+  <select id="fetchBaseMachineTypeComboboxList" parameterType="com.zxtech.ess.module.base.bean.BaseMachineTypeSearchBean" resultType="java.util.HashMap">
+		select
+			bmt.type_id,
+			bmt.ele_category,
+			bmt.machine_type,
+			bmt.type_code,
+			bmt.type_desc,
+			bmt.p_type_id,
+			bmt1.type_code p_type_code
+		from base_machine_type bmt WITH(NOLOCK)
+		left join base_machine_type bmt1 WITH(NOLOCK) on bmt.p_type_id = bmt1.type_id and bmt1.enable_flag='1'
+		where bmt.enable_flag = '1'
+	
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( machine_type )">
+	  		and bmt.machine_type = #{machine_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( p_type_id )">
+	  		and bmt.p_type_id = #{p_type_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( pTypeSign )">
+	  		and bmt.p_type_id is null
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( ele_category )">
+	  		and bmt.ele_category = #{ele_category}
+	  	</if>
+	  	
+
+  </select>
+  <sql id="queryExportList">
+  	 select
+   		bmt.type_id,
+   		bmt.last_update_timestamp,
+		bmt.ele_category,
+		(case when bmt.ele_category='1' then '直梯'
+			  when bmt.ele_category='2' then '扶梯'
+			  else '' end) as ele_category_name,
+		bmt.machine_type,
+		(case when bmt.machine_type ='1' then '机器分类'  
+			  when bmt.machine_type ='2' then '第一分类'
+			  when bmt.machine_type ='3' then '第二分类'
+			  when bmt.machine_type ='4' then '第三分类'
+			  else '' end) as machine_type_name, 
+		bmt.type_code,
+		bmt.type_desc,
+		bmt.enable_flag,
+		(case when bmt.enable_flag = '1' then '活动'
+			  else '禁用'  end) as enable_flag_name,
+		bmt.p_type_id,
+		bmt1.machine_type p_machine_type,
+		(case when bmt1.machine_type ='1' then '机器分类'  
+			  when bmt1.machine_type ='2' then '第一分类'
+			  when bmt1.machine_type ='3' then '第二分类'
+			  when bmt1.machine_type ='4' then '第三分类'
+			  else '' end) as p_machine_type_name,
+		bmt1.type_code p_type_code,
+		bmt1.type_desc p_type_desc
+	
+	from base_machine_type bmt WITH(NOLOCK)
+	left join base_machine_type bmt1 WITH(NOLOCK) on bmt.p_type_id = bmt1.type_id and bmt1.enable_flag='1'
+
+	where
+		1=1
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( machine_type )">
+  		and bmt.machine_type = #{machine_type}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_code )">
+  	 <bind name="like_type_code" value="'%' + type_code + '%'" />
+  		and bmt.type_code like #{like_type_code}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_desc )">
+  	 <bind name="like_type_desc" value="'%' + type_desc + '%'" />
+  		and bmt.type_desc like #{like_type_desc}
+  	</if>
+  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+  		and bmt.enable_flag = #{enable_flag}
+  	</if>
+  </sql>
+  <select id="baseMachineTypeExportListCount" resultType="java.lang.Long" parameterType="com.zxtech.ess.module.base.bean.BaseMachineTypeSearchBean">
+  	select count(1) from (
+		<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+  
+	<select id="baseMachineTypeExportList" parameterType="com.zxtech.ess.module.base.bean.BaseMachineTypeSearchBean" resultType="java.util.HashMap" useCache="false" timeout="5000">
+  	select _temp.* from (
+    	<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+
+  </select>
+     
+</mapper>

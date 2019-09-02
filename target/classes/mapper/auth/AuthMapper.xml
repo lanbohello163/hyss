@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.auth.mapper.AuthMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <!-- author: zhaow -->
+  <select id="fetchUserRoleList" resultType="java.util.HashMap">
+	select
+		DISTINCT
+		sr.id,
+		sr.role_name,
+		sr.role_desc
+	from
+		sys_role sr WITH(NOLOCK), sys_user_role_rel surr WITH(NOLOCK)
+	where
+		sr.enable_flag = '1'
+		and sr.id = surr.role_id
+		and surr.user_id = #{user_id}
+  </select>
+  
+  <!-- author: zhaow -->
+  <select id="fetchRoleFunctionList" resultType="java.util.HashMap">
+	select
+		DISTINCT
+		sf.id,
+		sf.func_method
+	from
+		sys_function sf WITH(NOLOCK), sys_role_menu_func_rel srmfr WITH(NOLOCK)
+	where 1=1
+		and sf.id = srmfr.func_id
+		and srmfr.role_id = #{role_id}
+  </select>
+  
+  <!-- author: zhaow -->
+  <select id="getDeepCompanyListByDataid" resultMap="com.zxtech.ess.module.gen.mapper.BaseCompanyMapper.BaseResultMap">
+	with temp(id, p_comp_id, comp_name, comp_type) as
+	(
+		select id, p_comp_id, comp_name, comp_type from base_company WITH(NOLOCK) where enable_flag='1' and id = #{data_id}
+		union all
+		select bc.id, bc.p_comp_id, bc.comp_name, bc.comp_type from base_company as bc WITH(NOLOCK) inner join temp on temp.id = bc.p_comp_id and bc.enable_flag = '1'
+	)
+	select id, comp_name, p_comp_id, comp_type from temp WITH(NOLOCK)
+	order by comp_type, comp_name
+  </select>
+  
+  <!-- author: zhaow -->
+  <select id="getDeepCompanyListByCompType" resultMap="com.zxtech.ess.module.gen.mapper.BaseCompanyMapper.BaseResultMap">
+	with temp(id, p_comp_id, comp_name, comp_type) as
+	(
+		select id, p_comp_id, comp_name, comp_type from base_company WITH(NOLOCK) where enable_flag='1' and comp_type = #{comp_type}
+		union all
+		select bc.id, bc.p_comp_id, bc.comp_name, bc.comp_type from base_company as bc WITH(NOLOCK) inner join temp on temp.id = bc.p_comp_id and bc.enable_flag = '1'
+	)
+	select distinct id, comp_name, p_comp_id, comp_type from temp WITH(NOLOCK)
+	order by comp_type, comp_name
+  </select>
+  
+</mapper>

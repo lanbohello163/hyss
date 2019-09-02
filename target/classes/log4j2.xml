@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- status设置为debug，可以在console看到Log4j2启动和加载配置文件时的打印信息，设置成off，即可关闭状态日志 -->
+<!-- monitorInterval是用来设置配置文件的动态加载时间的，单位是秒，表示每monitorInterval秒配置文件会动态加载一次 -->
+<!-- <configuration status="debug" monitorInterval="30"> -->
+<configuration status="debug">
+	<!-- 定义所有的appender -->
+	<appenders>
+		<!-- 输出控制台的配置 -->
+		<Console name="console" target="system_out">
+			<!-- 只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch） -->
+			<ThresholdFilter level="debug" onMatch="accept"
+				onMismatch="deny" />
+			<!-- 输出日志的格式 -->
+			<PatternLayout
+				pattern="%d{HH:mm:ss.SSS} %-5level %class{36} %L %M - %msg%xEx%n" />
+		</Console>
+	</appenders>
+
+	<!-- 定义logger，只有定义了logger并引入的appender，appender才会生效 -->
+	<loggers>
+		<!-- 记录指定某个类中的info属性的日志 additivity="true"的情况下它所打印的日志也会被root下面的日志所打印，如果为false那么root不会重复打印 -->
+		<logger name="com.zaxxer.hikari.pool.HikariPool" level="error"
+			additivity="false">
+			<appender-ref ref="console" />
+		</logger>
+		<logger name="org.apache.ibatis.io.DefaultVFS" level="error"
+			additivity="false">
+			<appender-ref ref="console" />
+		</logger>
+		
+		<!-- 建立一个默认的root的logger -->
+		<root level="debug">
+			<appender-ref ref="console" level="debug" />
+		</root>
+	</loggers>
+</configuration>

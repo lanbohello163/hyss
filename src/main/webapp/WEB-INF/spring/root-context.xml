@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:cache="http://www.springframework.org/schema/cache"
+	xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+	xsi:schemaLocation=" 
+          http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+          http://www.springframework.org/schema/tx
+          http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+          http://www.springframework.org/schema/context
+          http://www.springframework.org/schema/context/spring-context-4.3.xsd
+          http://www.springframework.org/schema/util
+          http://www.springframework.org/schema/util/spring-util-4.3.xsd
+          http://www.springframework.org/schema/aop
+          http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+          http://www.springframework.org/schema/cache
+          http://www.springframework.org/schema/cache/spring-cache-4.3.xsd
+          http://mybatis.org/schema/mybatis-spring
+          http://mybatis.org/schema/mybatis-spring.xsd"
+	default-autowire="byName">
+
+	<bean id="hikariConfig" class="com.zaxxer.hikari.HikariConfig">
+		<constructor-arg name="propertyFileName" value="/jdbc.properties" />
+	</bean>
+
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource"
+		destroy-method="close">
+		<constructor-arg ref="hikariConfig" />
+	</bean>
+
+	<!-- transaction manager, use JtaTransactionManager for global tx -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<!-- mybatis -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:mybatis-configuration.xml" />
+		<property name="mapperLocations">
+			<list>
+				<value>classpath:mapper/**/*Mapper.xml</value>
+			</list>
+		</property>
+		<!-- 根据module中的模块配置 -->
+		<property name="typeAliasesPackage" value="com.zxtech.ess.module.gen.bean" />
+	</bean>
+
+	<!-- mybatis scan -->
+	<mybatis:scan base-package="com.zxtech.ess.module.**.mapper" />
+
+	<!-- spring data redis -->
+	<context:property-placeholder location="classpath:redis.properties" />
+	<bean id="connectionFactory"
+		class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory"
+		p:host-name="${redis.host}" p:port="${redis.port}" p:password="${redis.password}"
+		p:database="${redis.database}" />
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.StringRedisTemplate"
+		p:connection-factory-ref="connectionFactory" />
+	<bean id="cacheManager" class="org.springframework.data.redis.cache.RedisCacheManager"
+		p:defaultExpiration="${redis.defaultExpiration}">
+		<constructor-arg name="redisOperations" ref="redisTemplate" />
+	</bean>
+	<bean id="keyGenerator" class="com.zxtech.platform.utils.cache.AppKeyGenerator" />
+	<!-- spring cache annotation -->
+	<cache:annotation-driven cache-manager="cacheManager"
+		key-generator="keyGenerator" />
+
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver"
+		p:defaultEncoding="utf-8">
+		<property name="resolveLazily" value="true" />
+		<property name="maxUploadSize" value="100000000" />
+	</bean>
+
+	<bean id="throwsAdvice" class="com.zxtech.platform.spring.aspect.ThrowableManage" />
+	<bean id="beanNameAutoProxyCreator"
+		class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+		<property name="beanNames">
+			<list>
+				<value>*Service</value>
+			</list>
+		</property>
+		<property name="interceptorNames">
+			<value>throwsAdvice</value>
+		</property>
+	</bean>
+
+	<aop:aspectj-autoproxy />
+
+	<context:component-scan base-package="com.zxtech">
+		<context:exclude-filter type="regex"
+			expression="com.zxtech.ess.module.*.web.*" />
+	</context:component-scan>
+</beans>

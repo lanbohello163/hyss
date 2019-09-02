@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.api.mapper.ScreenManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <select id="acceptChangeList" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		t1.service_order ACCEPTID,
+		t1.service_order ACCEPTNO,
+		t3.comp_code AREAID,
+		t3.comp_name BRANCH,
+		t4.stat_name STATION,
+		t5.erp_comp_id COMPANY_CODE,
+		t4.source_id STATION_CODE,
+		t9.property_name CUSTOMER,
+		CASE WHEN t10.key_property_code IS NULL THEN '0' ELSE '1' END BIGCUSTOMER,
+		t12.proj_name DOMAINNAME,
+		t11.asset_num EMPLOYEENUM,
+		DATEDIFF(YEAR, CONVERT(VARCHAR(100), t11.out_factory_date, 23), CONVERT(VARCHAR (100), t11.certificate_date, 23)) AGE,
+		t11.asset_num_address ADDRESS,
+		t1.scene_fault_content FAULTS,
+		t1.is_trap ISANYFAULTS,
+		t1.solve_status STATUS,
+		t2.cal_datetime TRUSTEDTIME,
+		t1.finish_datetime ISFINISH,
+		CASE WHEN t1.trap_datetime IS NULL THEN '0' ELSE '1' END DISMISS_FLAG,
+		t13.dict_name COMEFROM,
+		t2.owner_id OWNER_NAME,
+		'' LASTFAULTTIME,
+		'' REAMRK,
+		CASE WHEN t14.turn_emp_code IS NULL THEN t14.order_datetime ELSE t14.turn_datetime END DISTRIBUTETIME,
+		CASE WHEN t14.turn_emp_code IS NULL THEN t16.emp_name ELSE t15.emp_name END COMEPERSON,
+		t1.deal_arrive_datetime COMETIME,
+		t1.deal_trap_datetime RESCUETIME,
+		t1.deal_finish_datetime FINISHTIME,
+		t1.reason_analyze FAULTCONTENT
+	FROM
+		cal_fault_solve_task t1 WITH(NOLOCK)
+	JOIN cal_service_request_form t2 WITH(NOLOCK) ON t1.service_order = t2.service_order
+	LEFT JOIN base_company t3 WITH(NOLOCK) ON t3.id = t2.comp_id
+	LEFT JOIN base_station t4 WITH(NOLOCK) ON t4.id = t2.stat_id
+	LEFT JOIN base_comp_sync t5 WITH(NOLOCK) ON t3.erp_comp_id = t5.id
+	LEFT JOIN cal_fault_elevator t6 WITH(NOLOCK) ON t6.fault_id = t1.id
+	LEFT JOIN mt_contract_dtl t7 WITH(NOLOCK) ON t7.asset_id = t6.asset_id AND t6.contract_code = t7.contract_code
+	LEFT JOIN mt_contract t8 WITH(NOLOCK) ON t8.contract_code = t7.contract_code
+	LEFT JOIN base_property t9 WITH(NOLOCK) ON t9.id = t8.cust_id
+	LEFT JOIN base_key_property t10 WITH(NOLOCK) ON t10.key_property_code = t9.key_property_code
+	LEFT JOIN base_elevator t11 WITH(NOLOCK) ON t11.id = t6.asset_id
+	LEFT JOIN base_project t12 WITH(NOLOCK) ON t12.id = t11.proj_id
+	LEFT JOIN sys_dictionary t13 WITH(NOLOCK) ON t13.dict_value = t2.service_request_source AND t13.dict_type = 'service_request_source'
+	LEFT JOIN cal_fault_dispatch t14 WITH(NOLOCK) ON t14.solve_id = t1.id and t14.enable_flag='1'
+	LEFT JOIN base_employee t15 WITH(NOLOCK) ON t15.emp_code = t14.emp_code
+	LEFT JOIN base_employee t16 WITH(NOLOCK) ON t16.emp_code = t14.turn_emp_code
+	WHERE t1.enable_flag = 1 
+	AND t1.service_order = #{service_order}
+  </select>
+  
+  <select id="syncEmpPosition" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	SELECT * FROM ( 
+		SELECT
+		t2.source_id userId,
+		t2.emp_name userName,
+		t2.emp_position postn,
+		t1.longitude dimension,
+		t1.latitude,
+		CONVERT(varchar(100), t1.create_timestamp, 120) createtime,
+		ACOS(
+		SIN(
+		(#{lat,jdbcType=FLOAT} * PI()) / 180
+		) * SIN( (CAST(t1.latitude AS FLOAT) * PI()) / 180 )
+		+ COS( (#{lat,jdbcType=FLOAT} * PI()) / 180 ) 
+		* COS( (CAST(t1.latitude AS FLOAT) * PI()) / 180 ) 
+		* COS( (#{lon,jdbcType=FLOAT} * PI()) / 180 - (CAST(t1.longitude AS FLOAT) * PI()) / 180 )
+		) * 6371000 distance,
+		t1.order_address orderAddress
+		FROM
+			pos_emp_position t1 WITH(NOLOCK), base_employee t2 WITH(NOLOCK)
+		WHERE t2.emp_code = t1.emp_code ) t 
+	WHERE distance &lt;= 100000
+  </select>
+  
+  <select id="syncEmpClock" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	SELECT
+		t2.source_id userId,
+		t2.emp_name userName,
+		CONVERT ( VARCHAR ( 100 ), t1.create_timestamp, 23) clockDate,
+		CONVERT ( VARCHAR ( 100 ), t1.create_timestamp, 24) clockTime,
+		t1.longitude dimension,
+		t1.latitude,
+		t1.order_address orderAddress,
+		t4.source_id statId,
+		t5.erp_comp_code erpCompCode,
+		t6.dict_name positionTypeName,
+		t1.position_type
+	FROM
+		pos_emp_position t1 WITH(NOLOCK)
+	LEFT JOIN base_employee t2 WITH(NOLOCK) ON t2.emp_code = t1.emp_code
+	LEFT JOIN base_company t3 WITH(NOLOCK) ON t3.id = t2.comp_id
+	LEFT JOIN base_station t4 WITH(NOLOCK) ON t4.id = t2.stat_id
+	LEFT JOIN base_comp_sync t5 WITH(NOLOCK) ON t5.id = t3.erp_comp_id
+	LEFT JOIN sys_dictionary t6 WITH(NOLOCK) ON t6.dict_type = 'position_type' and t6.dict_value = t1.position_type
+	WHERE DateDiff(dd,t1.create_timestamp,getdate()) &lt;= 7
+	AND t3.source_id = #{companyId,jdbcType=NVARCHAR}
+	ORDER BY t2.source_id,t1.create_timestamp
+  </select>
+</mapper>

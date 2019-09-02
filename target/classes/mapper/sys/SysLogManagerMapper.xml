@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.sys.mapper.SysLogManagerMapper">
+<!-- 开启redis二级缓存 -->
+<cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+<select id="sysLogList" parameterType="com.zxtech.ess.module.sys.bean.SysLogSearchBean" resultType="java.util.HashMap">
+select _temp.* from (
+	select
+		t.opt_person,
+		t.opt_datetime,
+		t.opt_behavior,
+		t.opt_code
+	from log_data t WITH(NOLOCK)	
+		where 1=1
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( opt_person )">
+	  		<bind name="like_opt_person" value="'%' + opt_person + '%'" />
+	  		    and t.opt_person like #{like_opt_person}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( begin_time )">
+	  	    <![CDATA[
+	  		    and t.opt_datetime >= #{begin_time}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( end_time )">
+	  		<![CDATA[
+	  			and t.opt_datetime <= DATEADD(day, +1, #{end_time})
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( opt_behavior )">
+	  		<bind name="like_opt_behavior" value="'%' + opt_behavior + '%'" />
+	  		and t.opt_behavior like #{like_opt_behavior}
+	  	</if>
+  
+   ) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	  	order by _temp.opt_datetime desc
+</select>
+<sql id="queryExportList">
+  	select
+		t.opt_person,
+		t.opt_datetime,
+		t.opt_behavior,
+		t.opt_code
+	from log_data t WITH(NOLOCK)
+		where 1=1
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( opt_person )">
+	  		<bind name="like_opt_person" value="'%' + opt_person + '%'" />
+	  		    and t.opt_person like #{like_opt_person}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( begin_time )">
+	  	    <![CDATA[
+	  		    and t.opt_datetime >= #{begin_time}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( end_time )">
+	  		<![CDATA[
+	  			and t.opt_datetime <= DATEADD(day, +1, #{end_time})
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( opt_behavior )">
+	  		<bind name="like_opt_behavior" value="'%' + opt_behavior + '%'" />
+	  		and t.opt_behavior like #{like_opt_behavior}
+	  	</if>
+  </sql>
+	<select id="contractExportListCount" resultType="java.lang.Long" parameterType="com.zxtech.ess.module.sys.bean.SysLogSearchBean">
+  	select count(1) from (
+		<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+  
+	<select id="contractExportList" parameterType="com.zxtech.ess.module.sys.bean.SysLogSearchBean" resultType="java.util.HashMap" useCache="false" timeout="5000">
+  	select _temp.* from (
+    	<include refid="queryExportList" />
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+
+  </select>
+</mapper>

@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseEmployeeManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache"/>
+  
+  <sql id="querySql">
+  select _temp.* from (
+    select
+		be.id,
+		be.emp_code,
+		be.emp_name,
+		be.emp_code + be.emp_name as emp_code_emp_name,
+		be.emp_sex,
+		sd.dict_name as emp_sex_name,
+		be.id_number,
+		be.born_date,
+		be.emp_type,
+		sd2.dict_name as emp_type_name,
+		be.emp_position,
+		be.position_sequence,
+		be.pda_position,
+		sd7.dict_name as pda_position_name,
+		be.employ_nature,
+		be.emp_tel,
+		be.comp_id,
+		bc.comp_name,
+		be.stat_id,
+		bs.stat_name,
+		be.area_id,
+		ba.area_name,
+		be.group_id,
+		bg.group_name,
+		be.entry_date,
+		cast(datediff(month,cast(be.entry_date as date),getdate())/12 as nvarchar)+'年'
+			+cast(datediff(month,cast(be.entry_date as date),getdate())%12 as nvarchar)+'个月'  as working_life,
+		be.departure_date,
+		be.departure_reason,
+		be.other_brand_skill,
+		be.dispatch_send_first,
+		be.dispatch_send_second,
+		be.dispatch_send_third,
+		sd4.dict_name as dispatch_send_first_name,
+		sd5.dict_name as dispatch_send_second_name,
+		sd6.dict_name as dispatch_send_third_name,
+		be.emp_remark,
+		be.bi_work_type,
+		be.bi_duty,
+		be.enable_flag,
+		sd1.dict_name as enable_flag_name,
+		be.last_update_timestamp,
+		be.type_hotline,
+		be.type_regular_check,
+		be.type_casual_check,
+		be.type_mt,
+		be.type_rota_engineer,
+		be.emp_email,
+		STUFF((case be.hotline_manager when '1' then ',400热线（主管）' else case be.type_hotline when '1' then ',400热线（普通）' else '' end end +  
+			+ case be.type_regular_check when '1' then ',定检' else '' end 
+			+ case be.type_casual_check when '1' then ',抽检' else '' end + case be.type_mt when '1' then ',维保' else '' end
+			+ case be.type_rota_engineer when '1' then ',值班工程师' else '' end ),1,1,'') as emp_categorys,
+		be.work_emp_level,
+		sd8.dict_name as work_emp_level_name,
+		coalesce(be.hotline_manager,'0') as hotline_manager,
+		sd9.dict_name as hotline_manager_name,
+		be.position_description,
+		sd10.dict_name as position_description_name,
+		sd11.dict_name as type_hotline_name,
+		be.hr_comp_name,
+		case when sd8.dict_name is not null then be.emp_name+'('+coalesce(sd2.dict_name,'')+'、'+coalesce(sd8.dict_name,'')+')'
+		else be.emp_name+'('+sd2.dict_name+')' end as emp_name_type_level
+	from base_employee be WITH(NOLOCK)
+	left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type='emp_sex' and sd.dict_value=be.emp_sex
+	left join sys_dictionary sd1 WITH(NOLOCK) on sd1.dict_type='enable_flag' and sd1.dict_value=be.enable_flag
+	left join sys_dictionary sd2 WITH(NOLOCK) on sd2.dict_type='emp_type' and sd2.dict_value=be.emp_type
+	left join sys_dictionary sd4 WITH(NOLOCK) on sd4.dict_type='key_type' and sd4.dict_value=be.dispatch_send_first
+	left join sys_dictionary sd5 WITH(NOLOCK) on sd5.dict_type='key_type' and sd5.dict_value=be.dispatch_send_second
+	left join sys_dictionary sd6 WITH(NOLOCK) on sd6.dict_type='key_type' and sd6.dict_value=be.dispatch_send_third
+	left join sys_dictionary sd7 WITH(NOLOCK) on sd7.dict_type='pda_position' and sd7.dict_value=be.pda_position
+	left join sys_dictionary sd8 WITH(NOLOCK) on sd8.dict_type='emp_level' and sd8.dict_value=be.work_emp_level
+	left join sys_dictionary sd9 WITH(NOLOCK) on sd9.dict_type='key_type' and sd9.dict_value=coalesce(be.hotline_manager,'0')
+	left join sys_dictionary sd10 WITH(NOLOCK) on sd10.dict_type='position_description' and sd10.dict_value=be.position_description
+	left join sys_dictionary sd11 WITH(NOLOCK) on sd11.dict_type='key_type' and sd11.dict_value=be.type_hotline
+	left join base_company bc WITH(NOLOCK) on bc.id = be.comp_id
+	left join base_station bs WITH(NOLOCK) on bs.id = be.stat_id
+	left join base_area ba WITH(NOLOCK) on ba.id = be.area_id
+	left join base_group bg WITH(NOLOCK) on bg.id = be.group_id
+	where 1=1
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and be.enable_flag = #{enable_flag}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_type )">
+	  		and be.emp_type = #{emp_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and be.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and be.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( area_id )">
+	  		and be.area_id = #{area_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_tel )">
+	  		<bind name="like_emp_tel" value="'%' + emp_tel + '%'" />
+	  		and be.emp_tel like #{like_emp_tel}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( pda_position )">
+	  		and be.pda_position = #{pda_position}
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0 ">
+			and be.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_rota_engineer )">
+	  		and be.type_rota_engineer = #{type_rota_engineer}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_mt )">
+	  		and be.type_mt = #{type_mt}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( type_hotline )">
+	  		and be.type_hotline = #{type_hotline}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_position )">
+	  		<bind name="like_emp_position" value="'%' + emp_position + '%'" />
+	  		and be.emp_position like #{like_emp_position}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( bi_work_type )">
+	  		<bind name="like_bi_work_type" value="'%' + bi_work_type + '%'" />
+	  		and be.bi_work_type like #{like_bi_work_type}
+	  	</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and be.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and be.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<choose>
+			<when test="comp_or_region == 2">
+				and be.position_description = '1'
+			</when>
+			<when test="comp_or_region == 3 ">
+				and be.position_description = '2'
+			</when>
+		</choose>
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	order by _temp.emp_code
+  </sql>
+  
+  <select id="empList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="getReportList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean"
+  	useCache="false" timeout="5000">
+	<include refid="querySql"></include>
+  </select>
+  
+  <select id="initEmpTypeSeq" useCache="false" resultType="java.lang.String">
+	select 'TY' + RIGHT(REPLICATE('0',8)+CAST(count(0)+1 AS varchar(10)),8) from base_employee WITH(NOLOCK) where emp_type='2'
+  </select>
+  
+  <select id="regularCheckEmpPageList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+  SELECT _temp.* from (
+	SELECT
+		be.emp_code,
+		be.emp_name,
+		be.emp_tel,
+		sd1.dict_name AS emp_type_name,
+		bs.stat_name,
+		cp.elevator_model,
+		cp.escalator_models,
+		sd2.dict_name AS pda_position_name
+	FROM
+		base_employee be WITH(NOLOCK)
+	LEFT JOIN ch_regular_check_emp cp WITH(NOLOCK) ON be.emp_code = cp.emp_code
+	LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'emp_type' AND be.emp_type = sd1.dict_value
+	LEFT JOIN base_station bs WITH(NOLOCK) ON be.stat_id = bs.id
+	LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'pda_position' AND be.pda_position = sd2.dict_value
+	WHERE
+		be.type_regular_check = '1' AND be.enable_flag = '1' and be.comp_id = #{comp_id, jdbcType=INTEGER}
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code, jdbcType=NVARCHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name, jdbcType=NVARCHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_type )">
+	  		and be.emp_type = #{emp_type, jdbcType=CHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and be.stat_id = #{stat_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_first_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_first_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_second_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_second_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>		
+	 ) _temp
+	 <where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	 </where>
+	 order by _temp.emp_code
+  </select>
+  
+  
+  <select id="coordinatorPageList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+  SELECT _temp.* from (
+	SELECT
+		be.emp_code,
+		be.emp_name,
+		be.emp_tel,
+		sd1.dict_name AS emp_type_name,
+		bs.stat_name,
+		cp.elevator_model,
+		cp.escalator_models,
+		sd2.dict_name AS pda_position_name
+	FROM
+		base_employee be WITH(NOLOCK)
+	LEFT JOIN ch_regular_check_emp cp WITH(NOLOCK) ON be.emp_code = cp.emp_code
+	LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'emp_type' AND be.emp_type = sd1.dict_value
+	LEFT JOIN base_station bs WITH(NOLOCK) ON be.stat_id = bs.id
+	LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'pda_position' AND be.pda_position = sd2.dict_value
+	WHERE
+		(be.type_regular_check = '1' or be.type_mt = '1') AND be.enable_flag = '1' and be.comp_id = #{comp_id, jdbcType=INTEGER}
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code, jdbcType=NVARCHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name, jdbcType=NVARCHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_type )">
+	  		and be.emp_type = #{emp_type, jdbcType=CHAR}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and be.stat_id = #{stat_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_first_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_first_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_second_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_second_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>		
+	 ) _temp
+	 <where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	 </where>
+	 order by _temp.emp_code
+  </select>  
+  
+  <select id="checkPersonList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT DISTINCT
+		emp_code,
+		emp_name
+	FROM
+		base_employee WITH(NOLOCK)
+	<where>
+		enable_flag = '1'
+		<if test="comp_id != null">
+			and comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and area_id = #{area_id}
+		</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>				
+	</where> 
+  </select>
+  
+  <select id="rectifyPersonList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT DISTINCT
+		emp_code,
+		emp_name,
+		emp_code + emp_name AS code_name
+	FROM
+		base_employee WITH(NOLOCK)
+	<where>
+		enable_flag = '1'
+		<if test="comp_id != null">
+			and comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and area_id = #{area_id}
+		</if>
+	</where> 
+  </select>
+    
+  <select id="guaranteePersonlist" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT DISTINCT
+		emp_code,
+		emp_name
+	FROM
+		base_employee WITH(NOLOCK)
+	<where>
+		enable_flag = '1'
+		<if test="comp_id != null">
+			and comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and area_id = #{area_id}
+		</if>
+		<if test="areaIdList != null and areaIdList.size() > 0">
+			and area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="compIdList != null and compIdList.size() > 0">
+			and comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>		
+	</where> 
+  </select>
+  
+  <select id="getSysUserInfoById" parameterType="java.lang.Integer" resultType="com.zxtech.ess.module.gen.bean.BaseEmployee">
+		SELECT
+			* 
+		FROM
+			base_employee be WITH(NOLOCK)
+			LEFT JOIN sys_user su WITH(NOLOCK) ON su.emp_code = be.emp_code
+		WHERE
+			su.id = #{id, jdbcType=INTEGER}  
+  </select>
+  
+  <select id="gyrusCheckEmpPageList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+  select _temp.* from (
+		SELECT
+			be.id,
+			be.emp_code,
+			be.emp_name,
+			be.emp_type,
+			sd1.dict_name AS emp_type_name,
+			be.pda_position,
+			sd2.dict_name AS pda_position_name,
+			be.emp_tel,
+			be.comp_id,
+			bc.comp_name,
+			be.stat_id,
+			bs.stat_name,
+			be.area_id,
+			ba.area_name 
+		FROM
+			base_employee be WITH(NOLOCK)
+			LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'emp_type' AND sd1.dict_value = be.emp_type
+			LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'pda_position' AND sd2.dict_value = be.pda_position
+			LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = be.comp_id
+			LEFT JOIN base_station bs WITH(NOLOCK) ON bs.id = be.stat_id
+			LEFT JOIN base_area ba WITH(NOLOCK) ON ba.id = be.area_id
+		WHERE
+			1 = 1
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_comp_id )">
+	  		and be.comp_id = #{login_user_comp_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="compIdsList != null and compIdsList.size() > 0">
+	  		AND be.comp_id in
+	  		<foreach item="compId" index="index" collection="compIdsList" open="(" separator="," close=")">
+	  			#{compId}
+	  		</foreach>
+	  	</if>	  	
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_stat_id )">
+	  		and be.stat_id = #{login_user_stat_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_area_id )">
+	  		and be.area_id = #{login_user_area_id, jdbcType=INTEGER}
+	  	</if>	
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( enable_flag )">
+	  		and be.enable_flag = #{enable_flag}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_type )">
+	  		and be.emp_type = #{emp_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+	  		and be.comp_id = #{comp_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_name )">
+	  		<bind name="like_comp_name" value="'%' + comp_name + '%'" />
+	  		and bc.comp_name like #{like_comp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+	  		and be.stat_id = #{stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_name )">
+	  		<bind name="like_stat_name" value="'%' + stat_name + '%'" />
+	  		and bs.stat_name like #{like_stat_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( area_id )">
+	  		and be.area_id = #{area_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_tel )">
+	  		<bind name="like_emp_tel" value="'%' + emp_tel + '%'" />
+	  		and be.emp_tel like #{like_emp_tel}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( pda_position )">
+	  		and be.pda_position = #{pda_position}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_first_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_first_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_second_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_second_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_third_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_third_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0 ">
+			and be.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>	  		  		  		  	
+		<if test="statIdList != null and statIdList.size() > 0">
+			and be.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and be.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>		
+		<choose>
+			<when test="comp_or_region == 2">
+				and be.position_description = '1'
+			</when>
+			<when test="comp_or_region == 3 ">
+				and be.position_description = '2'
+			</when>
+		</choose>
+  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+	order by _temp.emp_code
+  </select>
+  
+  <select id="gyrusEmpList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT DISTINCT
+		emp_code,
+		emp_name
+	FROM
+		base_employee WITH(NOLOCK)
+	WHERE
+		enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_comp_id )">
+	  		and comp_id = #{login_user_comp_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_stat_id )">
+	  		and stat_id = #{login_user_stat_id, jdbcType=INTEGER}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( login_user_area_id )">
+	  		and area_id = #{login_user_area_id, jdbcType=INTEGER}
+	  	</if>		
+		<if test="comp_id != null">
+			and comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and area_id = #{area_id}
+		</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+		<if test="statIdList != null and statIdList.size() > 0">
+			and stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>		 
+  </select>
+  
+  <select id="gyrusCheckPersonList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT
+		be.id,
+		be.emp_code,
+		be.emp_name,
+		be.emp_type,
+		sd1.dict_name AS emp_type_name,
+		be.pda_position,
+		sd2.dict_name AS pda_position_name,
+		be.emp_tel,
+		be.comp_id,
+		bc.comp_name,
+		be.stat_id,
+		bs.stat_name,
+		be.area_id,
+		ba.area_name 		
+	FROM
+		base_employee be WITH(NOLOCK)
+	LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'emp_type' AND sd1.dict_value = be.emp_type
+	LEFT JOIN sys_dictionary sd2 WITH(NOLOCK) ON sd2.dict_type = 'pda_position' AND sd2.dict_value = be.pda_position
+	LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = be.comp_id
+	LEFT JOIN base_station bs WITH(NOLOCK) ON bs.id = be.stat_id
+	LEFT JOIN base_area ba WITH(NOLOCK) ON ba.id = be.area_id
+	<where>
+		be.enable_flag = '1'
+		<if test="comp_id != null">
+			and be.comp_id = #{comp_id}
+		</if>
+		<if test="stat_id != null">
+			and be.stat_id = #{stat_id}
+		</if>
+		<if test="area_id != null">
+			and be.area_id = #{area_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( contract_stat_id )">
+	  		and be.stat_id = #{contract_stat_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( contract_area_id )">
+	  		and be.area_id = #{contract_area_id}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_type )">
+	  		and be.emp_type = #{emp_type}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_tel )">
+	  		<bind name="like_emp_tel" value="'%' + emp_tel + '%'" />
+	  		and be.emp_tel like #{like_emp_tel}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( pda_position )">
+	  		and be.pda_position = #{pda_position}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_first_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_first_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_second_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_second_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( selected_third_emp_code )">
+	  		<![CDATA[
+	  			and be.emp_code <> #{selected_third_emp_code, jdbcType=NVARCHAR}
+	  		]]>
+	  	</if>
+		<if test="compIdList != null and compIdList.size() > 0 ">
+			and be.comp_id in <foreach close=")" collection="compIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>	  		  		  		  	
+		<if test="statIdList != null and statIdList.size() > 0">
+			and be.stat_id in <foreach close=")" collection="statIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>
+	  	<if test="areaIdList != null and areaIdList.size() > 0">
+			and be.area_id in <foreach close=")" collection="areaIdList" item="item" open="(" separator=",">#{item}</foreach>
+		</if>		
+	</where> 
+  </select>
+    <select id="getCasualCheckRectificationPersionList" parameterType="com.zxtech.ess.module.base.bean.BaseEmployeeSearchBean" resultType="java.util.HashMap">
+	SELECT
+		be.emp_code,
+		be.emp_name,
+		sd1.dict_name AS emp_type_name,
+		be.emp_tel,
+		bc.comp_name,
+		be.position_sequence		
+	FROM
+		base_station bs WITH(NOLOCK)
+	LEFT JOIN base_employee be WITH(NOLOCK) ON bs.stat_manager = be.emp_code
+	LEFT JOIN sys_dictionary sd1 WITH(NOLOCK) ON sd1.dict_type = 'emp_type' AND sd1.dict_value = be.emp_type
+	LEFT JOIN base_company bc WITH(NOLOCK) ON bc.id = bs.comp_id
+	<where>
+		be.enable_flag = '1'
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( comp_id )">
+			and bs.comp_id = #{comp_id}
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( stat_id )">
+			and bs.id = #{stat_id}
+			and bs.stat_manager is not null
+		</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_name )">
+	  		<bind name="like_emp_name" value="'%' + emp_name + '%'" />
+	  		and be.emp_name like #{like_emp_name}
+	  	</if>
+	  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( emp_code )">
+	  		<bind name="like_emp_code" value="'%' + emp_code + '%'" />
+	  		and be.emp_code like #{like_emp_code}
+	  	</if>
+	</where> 
+  </select>  
+</mapper>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseCompAttachManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" />
+  
+  <select id="compAttachPagingList" resultType="java.util.HashMap" parameterType="com.zxtech.ess.module.base.bean.BaseAttAndMagBean">
+  	SELECT 
+	  	t.id, t.comp_id, t.attach_name, t.attach_type, t.attach_url, t.attach_byte_size, t.attach_remark, 
+	    t.enable_flag, t.create_user, t.create_timestamp, t.last_update_user, t.last_update_timestamp, 
+	    t.last_update_remark,sd.dict_name as comp_attach_type_name
+    FROM base_comp_attach t WITH(NOLOCK)
+    left join sys_dictionary sd WITH(NOLOCK) on sd.dict_type='comp_attach_type' and sd.dict_value= t.attach_type
+    where t.comp_id = #{comp_id} ORDER BY t.create_timestamp DESC
+  </select>
+</mapper>

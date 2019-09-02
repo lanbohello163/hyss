@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseFaultDutyParamManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+   <select id="getListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseFaultDutyParamSearchBean" resultType="java.util.HashMap">
+	select
+		t.id,
+		t.bad_code,
+		t.fault_def,
+		t.bad_category,
+		t.bad_class,
+		t.is_fault,
+		t.responsibility_attribution,
+		t.responsibility_type,
+		t.enable_flag,
+		case t.enable_flag when '1' then '活动' when '0' then '禁用' end as enable_flag_name
+	from cal_fault_duty_param t WITH(NOLOCK)
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( bad_code )">
+	  		<bind name="like_bad_code" value="'%' + bad_code + '%'" />
+	  		and t.bad_code like #{like_bad_code}
+	  	</if>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( bad_category )">
+	  		<bind name="like_bad_category" value="'%' + bad_category + '%'" />
+	  		and t.bad_category like #{like_bad_category}
+	  	</if>
+  	</where>
+  	order by t.id desc
+  </select>
+  
+</mapper>

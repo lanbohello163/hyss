@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.base.mapper.BaseKnowledgeManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <select id="getListWithPaging" parameterType="com.zxtech.ess.module.base.bean.BaseKnowledgeSearchBean" resultType="java.util.HashMap">
+	  select _temp.* from (
+		    select
+				bk.id,
+				bk.knowledge_name,
+				bk.knowledge_category,
+				bk.knowledge_question_category,
+				bk.knowledge_question_child_category,
+				bk.knowledge_question_third_category,
+				bk.use_scope,
+				bk.is_comp_seen,
+				sd1.dict_name as is_comp_seen_name,
+				bk.question_desc,
+				bk.solve_desc,
+				bk.knowledge_status,
+				bk.create_user,
+				bk.create_timestamp,
+				bk.last_update_user,
+				bk.last_update_timestamp,
+				bk.last_update_remark,
+				bd1.dict_name as knowledge_question_category_name,
+				bd2.dict_name as knowledge_question_child_category_name,
+				bd3.dict_name as knowledge_question_third_category_name
+			from base_knowledge bk WITH(NOLOCK)
+			left join base_dictionary bd1 WITH(NOLOCK) on bk.knowledge_question_category = bd1.dict_code and bd1.dict_type = 'knowledge_question_category'
+			left join base_dictionary bd2 WITH(NOLOCK) on bk.knowledge_question_child_category = bd2.dict_code and bd2.dict_type = 'knowledge_question_child_category'
+			left join base_dictionary bd3 WITH(NOLOCK) on bk.knowledge_question_third_category = bd3.dict_code and bd3.dict_type = 'knowledge_question_third_category'
+			left join sys_dictionary sd1 WITH(NOLOCK) on bk.is_comp_seen = sd1.dict_value and sd1.dict_type = 'key_type'
+			where 1=1 
+			and bk.enable_flag = '1'
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( knowledge_question_category )">
+		  		and bk.knowledge_question_category = #{knowledge_question_category}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( knowledge_question_child_category )">
+		  		and bk.knowledge_question_child_category = #{knowledge_question_child_category}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( question_desc )">
+		  		<bind name="like_question_desc" value="'%' + question_desc + '%'" />
+		  		and bk.question_desc like #{like_question_desc}
+		  	</if>
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+    <select id="getListWithPagingPart" parameterType="com.zxtech.ess.module.base.bean.BaseKnowledgeSearchBean" resultType="java.util.HashMap">
+	  select _temp.* from (
+		    select
+				bk.id,
+				bk.knowledge_name,
+				bk.knowledge_category,
+				bk.knowledge_question_category,
+				bk.knowledge_question_child_category,
+				bk.knowledge_question_third_category,
+				bk.use_scope,
+				bk.is_comp_seen,
+				sd1.dict_name as is_comp_seen_name,
+				bk.question_desc,
+				bk.solve_desc,
+				bk.knowledge_status,
+				bk.create_user,
+				bk.create_timestamp,
+				bk.last_update_user,
+				bk.last_update_timestamp,
+				bk.last_update_remark,
+				bd1.dict_name as knowledge_question_category_name,
+				bd2.dict_name as knowledge_question_child_category_name,
+				bd3.dict_name as knowledge_question_third_category_name
+			from base_knowledge bk WITH(NOLOCK)
+			left join base_dictionary bd1 WITH(NOLOCK) on bk.knowledge_question_category = bd1.dict_code and bd1.dict_type = 'knowledge_question_category'
+			left join base_dictionary bd2 WITH(NOLOCK) on bk.knowledge_question_child_category = bd2.dict_code and bd2.dict_type = 'knowledge_question_child_category'
+			left join base_dictionary bd3 WITH(NOLOCK) on bk.knowledge_question_third_category = bd3.dict_code and bd3.dict_type = 'knowledge_question_third_category'
+			left join sys_dictionary sd1 WITH(NOLOCK) on bk.is_comp_seen = sd1.dict_value and sd1.dict_type = 'key_type'
+			where 1=1 
+			and bk.enable_flag = '1'
+			and bk.is_comp_seen = '1'
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( knowledge_question_category )">
+		  		and bk.knowledge_question_category = #{knowledge_question_category}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( knowledge_question_child_category )">
+		  		and bk.knowledge_question_child_category = #{knowledge_question_child_category}
+		  	</if>
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( question_desc )">
+		  		<bind name="like_question_desc" value="'%' + question_desc + '%'" />
+		  		and bk.question_desc like #{like_question_desc}
+		  	</if>
+	  	) _temp
+	<where>
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank( query_helper )">
+			${query_helper}
+		</if>
+	</where>
+  </select>
+</mapper>

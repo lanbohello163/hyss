@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zxtech.ess.module.api.mapper.ErpManagerMapper">
+  <!-- 开启redis二级缓存 -->
+  <cache type="com.zxtech.platform.utils.cache.mybatis.redis.RedisCache" flushInterval="3600000" />
+  
+  <select id="getStatIdByErpStatId" resultType="java.util.HashMap" parameterType="java.lang.String">
+	SELECT
+		t2.id
+	FROM
+		base_stat_sync t1 WITH(NOLOCK),
+		base_station t2 WITH(NOLOCK)
+	WHERE
+		t2.erp_stat_id = t1.id
+	AND t1.erp_stat_id = #{erp_stat_id}
+  </select>
+  
+  <select id="erpStationSelectAll" resultType="java.util.HashMap">
+  	SELECT
+		t2.erp_stat_id,
+		t1.stat_name
+	FROM
+		base_station t1 WITH(NOLOCK), base_stat_sync t2 WITH(NOLOCK)
+	WHERE
+		t2.id = t1.erp_stat_id
+  </select>
+  
+  <select id="erpCompanySelectAll" resultType="java.util.HashMap">
+  	SELECT
+		t2.erp_comp_id,
+		t1.comp_name 
+	FROM
+		base_company t1 WITH(NOLOCK), base_comp_sync t2 WITH(NOLOCK)
+	WHERE
+		t1.erp_comp_id = t2.id
+  </select>
+  
+</mapper>
