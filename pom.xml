@@ -54,7 +54,7 @@
 		<jasperreports-version>6.7.0</jasperreports-version>
 		<spring-data-redis-version>1.8.17.RELEASE</spring-data-redis-version>
 		<jwt-version>0.9.1</jwt-version>
-		<quartz-version>2.2.3</quartz-version>
+		<quartz-version>2.3.2</quartz-version>
 		<httpclient-version>4.5.3</httpclient-version>
 		<postgresql-version>42.2.2</postgresql-version>
 		<aviator-version>3.3.0</aviator-version>
