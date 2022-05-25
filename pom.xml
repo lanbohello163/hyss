@@ -35,7 +35,7 @@
 
 		<!-- version -->
 		<tomcat-servlet-version>8.5.33</tomcat-servlet-version>
-		<springframework-version>4.3.21.RELEASE</springframework-version>
+		<springframework-version>5.2.22.RELEASE</springframework-version>
 		<sqlserver-version>7.0.0.jre8</sqlserver-version>
 		<aspectj-version>1.9.1</aspectj-version>
 		<jackson-version>2.9.6</jackson-version>
