@@ -56,7 +56,7 @@
 		<jwt-version>0.9.1</jwt-version>
 		<quartz-version>2.2.3</quartz-version>
 		<httpclient-version>4.5.3</httpclient-version>
-		<postgresql-version>42.2.2</postgresql-version>
+		<postgresql-version>42.4.1</postgresql-version>
 		<aviator-version>3.3.0</aviator-version>
 		<websocket-version>1.1</websocket-version>
 		<spring-websocket-version>4.3.20.RELEASE</spring-websocket-version>
